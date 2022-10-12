@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, createContext } from 'react';
 import logo from './logo.svg';
 import './App.css';
 import { Midi, Player } from './midi';
+import { SingleNote } from './Notation';
 
 const midi = new Midi;
 midi.connect();
@@ -129,7 +130,17 @@ function Thing() {
                 </div>
             ))}
 
-            <button onClick={playStuff}>Test</button>
+            <SingleNote
+                accidentalGlyph="accidentalFlat"
+                note={14}
+                noteGlyph="noteWhole"
+                clefGlyph="gClef"
+                clefLine={3}
+            />
+
+            <div>
+                <button onClick={playStuff}>Test</button>
+            </div>
         </div>
     )
 }

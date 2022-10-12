@@ -7,6 +7,14 @@
   pointer-events: none;
 }
 
+@font-face {
+    font-family: 'Bravura'; src: local('Bravura'), url(./smufl/Bravura.woff2) format('woff2');
+}
+
+.test {
+    font-family: 'Bravura';
+}
+
 @media (prefers-reduced-motion: no-preference) {
   .App-logo {
     animation: App-logo-spin infinite 20s linear;
