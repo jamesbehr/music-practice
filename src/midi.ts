@@ -2,6 +2,37 @@ import { useState, useEffect, useContext, createContext } from 'react';
 
 type SomeEvent = NoteOnEvent | NoteOffEvent | ProgramChangeEvent;
 
+function noteOff(deltaTick: number, note: number) : DeltaEvent {
+    return {
+        deltaTick,
+        event: {
+            type: 'note-off',
+            note,
+            channel: 0,
+            velocity: 0x7f,
+        },
+    };
+}
+
+function noteOn(deltaTick: number, note: number) : DeltaEvent {
+    return {
+        deltaTick,
+        event: {
+            type: 'note-on',
+            note,
+            channel: 0,
+            velocity: 0x7f,
+        },
+    };
+}
+
+export function noteOnOff(deltaTick: number, duration: number, note: number) : DeltaEvent[] {
+    return [
+        noteOn(deltaTick, note),
+        noteOff(deltaTick + duration, note),
+    ];
+}
+
 // TODO: Enum type?
 interface ProgramChangeEvent {
     type: 'program-change',
