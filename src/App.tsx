@@ -4,6 +4,7 @@ import './App.css';
 import { Midi, Player, useMIDI, MIDIOutputContext } from './midi';
 import { SingleNote, Accidental } from './Notation';
 import { Keyboard } from './Keyboard';
+import { unsharpen, unflatten, isKeyBlack } from './notes';
 
 const midi = new Midi;
 midi.connect();
@@ -11,83 +12,22 @@ midi.connect();
 const player = new Player(1, midi);
 player.start();
 
-enum Step {
-    C = 0,
-    D,
-    E,
-    F,
-    G,
-    A,
-    B,
-};
-
-// Pitch is represented as a combination of the step of the diatonic scale, the
-// chromatic alteration, and the octave.
-interface Pitch {
-    // Step of the diatonic scale;
-    step: Step;
-
-    // The chromatic alteration in number of semitones (e.g., -1 for flat, 1
-    // for sharp). Decimal values like 0.5 (quarter tone sharp) are used for
-    // microtones.
-    alter: number;
-
-    // Octaves are represented by the numbers 0 to 9, where 4 indicates the
-    // octave started by middle C.
-    octave: number;
-};
-
-const semitonesAboveC = {
-    [Step.C]: 0,
-    [Step.D]: 2,
-    [Step.E]: 4,
-    [Step.F]: 5,
-    [Step.G]: 7,
-    [Step.A]: 9,
-    [Step.B]: 11,
-}
-
-function pitchToMidiNote(pitch: Pitch): number {
-    const cInSameOctave = (pitch.octave + 1) * 12;
-    return cInSameOctave + semitonesAboveC[pitch.step] + Math.round(pitch.alter);
-
-    // TODO: Bounds checking 0 <= note <= 127
-}
-
-// Number or lines or spaces there are between a given note and a reference pitch
-function staffNotesAbove(note: Pitch, reference: Pitch): number {
-    const stepDiff = note.step - reference.step;
-    const octaveDiff = note.octave - reference.octave;
-    // TODO: Factor in the alter
-    return stepDiff + octaveDiff * 7;
-}
-
-const accidentalsByAlter = new Map<number, Accidental> ([
-    [-1, 'accidentalFlat'],
-    [1, 'accidentalSharp'],
-]);
 
 function Thing() {
     const { instance: midi } = useMIDI();
 
     // TODO: Render when MIDI error
 
-    const note = {
-        step: Step.F,
-        octave: 4,
-        alter: 0,
-    };
-
-    const clefNote = {
-        step: Step.G,
-        octave: 4,
-        alter: 0,
-    };
-
+    // const note = 81; // A5
+    const note = 66;
+    const clefNote = 67; // G above middle C
+    const clefLine = 3;
     const interval = 1; // semitones
 
-    const clefLine = 3;
-    const accidental = accidentalsByAlter.get(note.alter);
+    const isSharp = false;
+    const unalter = isSharp ? unsharpen : unflatten;
+    const staffLine = unalter(note) - unalter(clefNote);
+    const accidental = isSharp ? 'accidentalSharp' : 'accidentalFlat';
 
     // TODO: Octave range
     // Bass Clef (F3) => C2 - C4 is comfortable
@@ -102,8 +42,6 @@ function Thing() {
     // - ...
 
     function playNote() {
-        const midiNote = pitchToMidiNote(note);
-
         // TODO: Clear anything that is currently being played
         player.addEvents([
             {
@@ -119,7 +57,7 @@ function Thing() {
                 deltaTick: 0,
                 event: {
                     type: 'note-on',
-                    note: midiNote,
+                    note: note,
                     channel: 0,
                     velocity: 0x7f,
                 },
@@ -128,7 +66,7 @@ function Thing() {
                 deltaTick: 1,
                 event: {
                     type: 'note-off',
-                    note: midiNote,
+                    note: note,
                     channel: 0,
                     velocity: 0x7f,
                 },
@@ -137,7 +75,7 @@ function Thing() {
                 deltaTick: 1,
                 event: {
                     type: 'note-on',
-                    note: midiNote + interval,
+                    note: note + interval,
                     channel: 0,
                     velocity: 0x7f,
                 },
@@ -146,7 +84,7 @@ function Thing() {
                 deltaTick: 2,
                 event: {
                     type: 'note-off',
-                    note: midiNote + interval,
+                    note: note + interval,
                     channel: 0,
                     velocity: 0x7f,
                 },
@@ -174,8 +112,8 @@ function Thing() {
             ))}
 
             <SingleNote
-                accidentalGlyph={accidental}
-                note={clefLine*2 - staffNotesAbove(note, clefNote)}
+                accidentalGlyph={isKeyBlack(note) ? accidental : undefined}
+                note={clefLine*2 - staffLine}
                 noteGlyph="noteWhole"
                 clefGlyph="gClef"
                 clefLine={clefLine}

@@ -1,19 +1,5 @@
 import { useMIDI } from './midi';
-
-const isKeyBlack = [
-    false, // C
-    true,  // C#
-    false, // D
-    true,  // D#
-    false, // E
-    false, // F
-    true,  // F#
-    false, // G
-    true,  // G#
-    false, // A
-    true,  // A#
-    false, // B
-];
+import { isKeyBlack } from './notes';
 
 interface KeyboardProps {
     lowestMidiNote: number;
@@ -61,9 +47,8 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
     let x = 0;
     for (let i = startKey; i < lastKey; i++) {
         const note = lowestMidiNote + i - startKey;
-        const key = i % isKeyBlack.length;
 
-        if (isKeyBlack[key]) {
+        if (isKeyBlack(note)) {
             blackKeys.push(
                 <rect
                     className="black"
