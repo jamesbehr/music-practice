@@ -44,3 +44,25 @@
     transform: rotate(360deg);
   }
 }
+
+.Keyboard .white {
+    fill: #fff;
+    stroke: #000;
+    stroke-width: 0.5;
+    transition: 150ms fill ease-in-out;
+}
+
+.Keyboard .white:hover {
+    fill: #cee;
+}
+
+.Keyboard .black {
+    fill: #000;
+    stroke: #000;
+    stroke-width: 0.5;
+    transition: 150ms fill ease-in-out;
+}
+
+.Keyboard .black:hover {
+    fill: #266;
+}

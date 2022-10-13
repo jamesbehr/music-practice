@@ -1,3 +1,5 @@
+import { useState, useEffect, useContext, createContext } from 'react';
+
 type SomeEvent = NoteOnEvent | NoteOffEvent | ProgramChangeEvent;
 
 // TODO: Enum type?
@@ -222,4 +224,30 @@ export class Player {
         window.clearTimeout(this.timeoutId);
         this.timeoutId = 0;
     }
+}
+
+export const MIDIOutputContext = createContext<Midi | null>(null);
+
+// TODO: Maybe have a separate thing for each output/inputs/state
+export function useMIDI() {
+    const midi = useContext(MIDIOutputContext);
+    if (midi === null) {
+        throw new Error('MIDI not provided');
+    }
+
+    const [state, forceUpdate] = useState({ instance: midi! });
+
+    useEffect(() => {
+        function update() {
+            forceUpdate({ instance: midi! });
+        }
+
+        midi.addEventListener('outputs-changed', update);
+
+        return function unsubscribe() {
+            midi.removeEventListener('outputs-changed', update);
+        };
+    });
+
+    return state;
 }

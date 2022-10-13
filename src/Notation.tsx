@@ -45,19 +45,14 @@ function computeLedgerLines(noteLine: number, staffLines: number) {
     return { count: 0, start: 0 };
 }
 
+export type Accidental = 'accidentalSharp' | 'accidentalFlat';
+
 interface SingleNoteProps {
     note: number;
-    accidentalGlyph?: 'accidentalSharp' | 'accidentalFlat';
+    accidentalGlyph?: Accidental;
     noteGlyph: 'noteWhole';
     clefGlyph: 'gClef' | 'fClef';
     clefLine: number;
-}
-
-function glyphHeightAboveOrigin(glyph: keyof typeof bravuraMetadata.glyphBBoxes) {
-    const { bBoxNE, bBoxSW } = bravuraMetadata.glyphBBoxes[glyph];
-    const [right, top] = bBoxNE;
-    const [left, bottom] = bBoxSW;
-    return Math.abs(top); // height above origin
 }
 
 interface PositionedGlyph {
@@ -82,7 +77,6 @@ function glyphHeightExtents(glyphs: PositionedGlyph[]) {
 
 // function glyphHeightExtents
 export function SingleNote({ note, clefLine, clefGlyph, noteGlyph, accidentalGlyph }: SingleNoteProps) {
-    const padding = 0.25;
     const clefPadding = 1;
     const noteLine = note * 0.5; // allow note to be placed between lines
     const accidentalPadding = accidentalGlyph ? 0.25 : 0;
@@ -106,8 +100,8 @@ export function SingleNote({ note, clefLine, clefGlyph, noteGlyph, accidentalGly
     }
 
     const extents = glyphHeightExtents(glyphs);
-    const offsetY = extents.top + padding;
-    const height = Math.abs(extents.bottom) + offsetY + padding;
+    const offsetY = extents.top;
+    const height = Math.abs(extents.bottom) + offsetY;
 
     return (
         <svg className="test" style={{ fontSize }} width={em(staffWidth)} height={em(height)}>
