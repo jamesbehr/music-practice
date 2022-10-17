@@ -9,7 +9,7 @@ interface KeyboardProps {
 };
 
 export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHeight = 100 }: KeyboardProps) {
-    const { instance: midi } = useMIDI();
+    const { manager } = useMIDI();
 
     if (lowestMidiNote >= highestMidiNote) {
         throw new Error('lowestMidiNote must be < highestMidiNote');
@@ -27,7 +27,7 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
     const lastKey = highestMidiNote - lowestMidiNote + startKey;
 
     function noteDown(note: number) {
-        midi.playEvent({
+        manager.playEvent({
             type: 'note-on',
             note: note,
             channel: 0,
@@ -36,7 +36,7 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
     }
 
     function noteUp(note: number) {
-        midi.playEvent({
+        manager.playEvent({
             type: 'note-off',
             note: note,
             channel: 0,
@@ -45,7 +45,7 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
     }
 
     let x = 0;
-    for (let i = startKey; i < lastKey; i++) {
+    for (let i = startKey; i <= lastKey; i++) {
         const note = lowestMidiNote + i - startKey;
 
         if (isKeyBlack(note)) {

@@ -1,15 +1,14 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 import logo from './logo.svg';
 import './App.css';
-import { Midi, Player, useMIDI, MIDIOutputContext, noteOnOff } from './midi';
+import { Manager, Player, defaultManager, useMIDI, MIDIOutputContext, noteOnOff } from './midi';
 import { SingleNote, Accidental } from './Notation';
 import { Keyboard } from './Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from './notes';
 
-const midi = new Midi;
-midi.connect();
+defaultManager.connect();
 
-const player = new Player(1, midi);
+const player = new Player(1, defaultManager);
 player.start();
 
 interface Clef {
@@ -51,7 +50,7 @@ const intervals = [
 
 const questions : Question[] = [];
 clefs.forEach((clef) => {
-    for (let note = clef.lowestMidiNote; note < clef.highestMidiNote; note++) {
+    for (let note = clef.lowestMidiNote; note <= clef.highestMidiNote; note++) {
         intervals.forEach((interval) => {
             const nextNote = note + interval;
 
@@ -69,7 +68,7 @@ clefs.forEach((clef) => {
 });
 
 function QuestionDisplay({ note, clef, nextNote, showAsSharp }: Question) {
-    const { instance: midi } = useMIDI();
+    const { manager } = useMIDI();
 
     const unalter = showAsSharp ? unsharpen : unflatten;
     const staffLine = unalter(note) - unalter(clef.midiNote);
@@ -112,23 +111,36 @@ function QuestionDisplay({ note, clef, nextNote, showAsSharp }: Question) {
 }
 
 function Thing() {
-    const { instance: midi } = useMIDI();
+    const { manager } = useMIDI();
 
     // TODO: Render when MIDI error
 
     return (
         <div>
             <h1>Inputs</h1>
+            {manager.inputs().map(port => (
+                <div key={port.id}>
+                    <label>
+                        <input
+                            type="radio"
+                            name="input"
+                            onChange={() => manager.setInput(port)}
+                            checked={manager.input !== null && manager.input.id === port.id}
+                            />
+                        {port.name}
+                    </label>
+                </div>
+            ))}
 
             <h1>Outputs</h1>
-            {midi.outputs().map(port => (
+            {manager.outputs().map(port => (
                 <div key={port.id}>
                     <label>
                         <input
                             type="radio"
                             name="output"
-                            onChange={() => midi.setOutput(port)}
-                            checked={midi.output !== null && midi.output.id === port.id}
+                            onChange={() => manager.setOutput(port)}
+                            checked={manager.output !== null && manager.output.id === port.id}
                             />
                         {port.name}
                     </label>
@@ -143,9 +155,7 @@ function Thing() {
 function App() {
     return (
         <div className="App">
-            <MIDIOutputContext.Provider value={midi}>
-                <Thing />
-            </MIDIOutputContext.Provider>
+            <Thing />
         </div>
     );
 }

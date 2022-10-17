@@ -71,17 +71,19 @@ enum Status {
     Success,
 }
 
-// TODO: Name
-export class Midi extends EventTarget {
+export class Manager extends EventTarget {
     access : WebMidi.MIDIAccess | null;
     output : WebMidi.MIDIOutput | null;
+    input : WebMidi.MIDIInput | null;
     status: Status;
 
     constructor() {
         super();
 
+        // TODO: Store input/output selections in localstorage
         this.access = null;
         this.output = null;
+        this.input = null;
         this.status = Status.Unitialized;
     }
 
@@ -91,29 +93,53 @@ export class Midi extends EventTarget {
             // TODO: Send state changed event
         }
 
-        // TODO: Listen for both? Might not be neccessary
-        // https://developer.mozilla.org/en-US/docs/Web/API/MIDIAccess/statechange_event
-        // https://developer.mozilla.org/en-US/docs/Web/API/MIDIPort/statechange_event
-
         window.navigator.requestMIDIAccess().then((midiAccess) => {
             this.access = midiAccess;
             this.status = Status.Success;
             this.access.addEventListener('statechange', this.handleStateChange);
-            this.dispatchEvent(new Event('outputs-changed'));
+            this.dispatchDevicesChanged();
         }).catch((error) => {
             this.status = Status.PermissionDenied;
             // TODO: Send state changed event
         });
     }
 
-    handleStateChange(event: Event) {
-        this.dispatchEvent(new Event('outputs-changed'));
+    handleStateChange = (event: Event) => {
+        this.dispatchDevicesChanged();
+    };
+
+    handleMidiMessage = (event: Event) => {
+        console.log(event);
+    };
+
+    dispatchDevicesChanged() {
+        this.dispatchEvent(new Event('devices-changed'));
     }
 
     disconnect() {
         if (this.access) {
             this.access.removeEventListener('statechange', this.handleStateChange);
         }
+    }
+
+    inputs(): WebMidi.MIDIInput[] {
+        if (this.access) {
+            return Array.from(this.access.inputs.values());
+        }
+
+        return [];
+    }
+
+    setInput(input: WebMidi.MIDIInput) {
+        // Unsubscribe the previous input from events
+        if (this.input) {
+            this.input.removeEventListener('midimessage', this.handleMidiMessage);
+        }
+
+        this.input = input;
+
+        this.input.addEventListener('midimessage', this.handleMidiMessage);
+        this.dispatchDevicesChanged();
     }
 
     outputs(): WebMidi.MIDIOutput[] {
@@ -131,7 +157,7 @@ export class Midi extends EventTarget {
         }
 
         this.output = output;
-        this.dispatchEvent(new Event('outputs-changed'));
+        this.dispatchDevicesChanged();
     }
 
     playEvent(event: SomeEvent) {
@@ -176,16 +202,16 @@ export class Player {
     tick: number;
     startTime: number;
     events: AbsoluteEvent[];
-    midi: Midi;
+    manager: Manager;
 
-    constructor(ticksPerBeat: number, midi: Midi) {
+    constructor(ticksPerBeat: number, manager: Manager) {
         this.timeoutId = 0;
         this.msPerBeat = 1000 / (120 / 60); // 120 bpm
         this.tick = 0;
         this.ticksPerBeat = ticksPerBeat;
         this.startTime = performance.now();
         this.events = [];
-        this.midi = midi;
+        this.manager = manager;
     };
 
     // TODO: This should be an event that sets the tempo
@@ -237,7 +263,7 @@ export class Player {
                 const event = this.events.shift()!;
 
                 if (event.tick === this.tick) {
-                    this.midi.playEvent(event.event);
+                    this.manager.playEvent(event.event);
                 } else {
                     console.warn('missed event', event, this.tick);
                 }
@@ -257,26 +283,23 @@ export class Player {
     }
 }
 
-export const MIDIOutputContext = createContext<Midi | null>(null);
+export const defaultManager = new Manager;
+export const MIDIOutputContext = createContext<Manager>(defaultManager);
 
 // TODO: Maybe have a separate thing for each output/inputs/state
 export function useMIDI() {
-    const midi = useContext(MIDIOutputContext);
-    if (midi === null) {
-        throw new Error('MIDI not provided');
-    }
-
-    const [state, forceUpdate] = useState({ instance: midi! });
+    const manager = useContext(MIDIOutputContext);
+    const [state, forceUpdate] = useState({ manager });
 
     useEffect(() => {
         function update() {
-            forceUpdate({ instance: midi! });
+            forceUpdate({ manager: manager });
         }
 
-        midi.addEventListener('outputs-changed', update);
+        manager.addEventListener('devices-changed', update);
 
         return function unsubscribe() {
-            midi.removeEventListener('outputs-changed', update);
+            manager.removeEventListener('devices-changed', update);
         };
     });
 
