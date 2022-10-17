@@ -68,8 +68,6 @@ clefs.forEach((clef) => {
 });
 
 function QuestionDisplay({ note, clef, nextNote, showAsSharp }: Question) {
-    const { manager } = useMIDI();
-
     const unalter = showAsSharp ? unsharpen : unflatten;
     const staffLine = unalter(note) - unalter(clef.midiNote);
     const accidental = showAsSharp ? 'accidentalSharp' : 'accidentalFlat';
@@ -105,7 +103,11 @@ function QuestionDisplay({ note, clef, nextNote, showAsSharp }: Question) {
                 <button onClick={playNote}>Test</button>
             </div>
 
-            <Keyboard lowestMidiNote={clef.lowestMidiNote} highestMidiNote={clef.highestMidiNote} />
+            <Keyboard
+                lowestMidiNote={clef.lowestMidiNote}
+                highestMidiNote={clef.highestMidiNote}
+                onKeyDown={console.log}
+            />
         </div>
     )
 }

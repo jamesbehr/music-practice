@@ -135,7 +135,48 @@ export class Manager extends EventTarget {
     };
 
     handleMidiMessage = (event: Event) => {
-        console.log(event);
+        const midiEvent = event as WebMidi.MIDIMessageEvent;
+        const a = midiEvent.data[0];
+        const channel = a & 0xf;
+
+        switch (a & 0xf0) {
+            case 0x80: {
+                const note = midiEvent.data[1] & 0x7f;
+                const velocity = midiEvent.data[2] & 0x7f;
+
+                this.dispatchEvent(new CustomEvent('midi-event', {
+                    detail: {
+                        type: EventType.NoteOff,
+                        channel,
+                        velocity,
+                        note,
+                    },
+                }));
+                break;
+            }
+            case 0x90: {
+                const note = midiEvent.data[1] & 0x7f;
+                const velocity = midiEvent.data[2] & 0x7f;
+
+                // The MIDI spec also allows notes to be switched off by
+                // sending note on with zero velocity, normalize handling on
+                // these types of events.
+                const type = velocity ? EventType.NoteOn : EventType.NoteOff;
+
+                this.dispatchEvent(new CustomEvent('midi-event', {
+                    detail: {
+                        type,
+                        channel,
+                        velocity,
+                        note,
+                    },
+                }));
+                break;
+            }
+            default:
+                console.warn('unhandled input MIDI event', midiEvent.data);
+                break;
+        }
     };
 
     dispatchDevicesChanged() {
@@ -371,4 +412,41 @@ export function useMIDI() {
     });
 
     return state;
+}
+
+// Hook to enable realtime MIDI input/playback
+export function useRealtimeMIDI(onMidiEvent: (event: CustomEvent<AnyEvent>) => void) {
+    const manager = useContext(MIDIOutputContext);
+
+    useEffect(() => {
+        function handler(event: Event) {
+            onMidiEvent(event as CustomEvent<AnyEvent>);
+        };
+
+        manager.addEventListener('midi-event', handler);
+
+        return function unsubscribe() {
+            manager.removeEventListener('midi-event', handler);
+        };
+    });
+
+    function noteOn(note: number) {
+        manager.playEvent({
+            type: EventType.NoteOn,
+            note: note,
+            channel: 0,
+            velocity: 0x7f,
+        });
+    }
+
+    function noteOff(note: number) {
+        manager.playEvent({
+            type: EventType.NoteOff,
+            note: note,
+            channel: 0,
+            velocity: 0x7f,
+        });
+    }
+
+    return { noteOn, noteOff };
 }

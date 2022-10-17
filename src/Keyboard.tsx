@@ -1,4 +1,4 @@
-import { useMIDI, EventType } from './midi';
+import { useRealtimeMIDI, EventType } from './midi';
 import { isKeyBlack } from './notes';
 
 interface KeyboardProps {
@@ -6,13 +6,39 @@ interface KeyboardProps {
     highestMidiNote: number;
     keyWidth?: number;
     keyHeight?: number;
+    onKeyDown?: (note: number) => void;
+    onKeyUp?: (note: number) => void;
 };
 
-export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHeight = 100 }: KeyboardProps) {
-    const { manager } = useMIDI();
+export function Keyboard({ onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 20, keyHeight = 100 }: KeyboardProps) {
+    const { noteOn, noteOff } = useRealtimeMIDI((event) => {
+        if (event.detail.type === EventType.NoteOff) {
+            if (onKeyUp) {
+                onKeyUp(event.detail.note);
+            }
+        } else if (event.detail.type === EventType.NoteOn) {
+            if (onKeyDown) {
+                onKeyDown(event.detail.note);
+            }
+        }
+    });
 
     if (lowestMidiNote >= highestMidiNote) {
         throw new Error('lowestMidiNote must be < highestMidiNote');
+    }
+
+    function keyDown(note: number) {
+        noteOn(note);
+        if (onKeyDown) {
+            onKeyDown(note);
+        }
+    }
+
+    function keyUp(note: number) {
+        noteOff(note);
+        if (onKeyUp) {
+            onKeyUp(note);
+        }
     }
 
     const whiteWidth = keyWidth;
@@ -25,24 +51,6 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
 
     const startKey = lowestMidiNote % 12; // Piano starts on C - all C MIDI notes are multiples of 12
     const lastKey = highestMidiNote - lowestMidiNote + startKey;
-
-    function noteDown(note: number) {
-        manager.playEvent({
-            type: EventType.NoteOn,
-            note: note,
-            channel: 0,
-            velocity: 0x7f,
-        });
-    }
-
-    function noteUp(note: number) {
-        manager.playEvent({
-            type: EventType.NoteOff,
-            note: note,
-            channel: 0,
-            velocity: 0x7f,
-        });
-    }
 
     let x = 0;
     for (let i = startKey; i <= lastKey; i++) {
@@ -57,8 +65,8 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
                     y={0}
                     width={blackWidth}
                     height={blackHeight}
-                    onMouseDown={() => noteDown(note)}
-                    onMouseUp={() => noteUp(note)}
+                    onMouseDown={() => keyDown(note)}
+                    onMouseUp={() => keyUp(note)}
                 />
             );
         } else {
@@ -70,8 +78,8 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
                     y={0}
                     width={whiteWidth}
                     height={whiteHeight}
-                    onMouseDown={() => noteDown(note)}
-                    onMouseUp={() => noteUp(note)}
+                    onMouseDown={() => keyDown(note)}
+                    onMouseUp={() => keyUp(note)}
                 />
             );
 
