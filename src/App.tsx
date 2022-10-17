@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, createContext } from 'react';
 import logo from './logo.svg';
 import './App.css';
-import { Manager, Player, defaultManager, useMIDI, MIDIOutputContext, noteOnOff } from './midi';
+import { Manager, Player, defaultManager, useMIDI, MIDIOutputContext, noteOnOff, EventType } from './midi';
 import { SingleNote, Accidental } from './Notation';
 import { Keyboard } from './Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from './notes';
@@ -80,7 +80,7 @@ function QuestionDisplay({ note, clef, nextNote, showAsSharp }: Question) {
             {
                 deltaTick: 0,
                 event: {
-                    type: 'program-change',
+                    type: EventType.ProgramChange,
                     channel: 0,
                     // program: 25, // Acoustic steel guitar
                     program: 0,

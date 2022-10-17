@@ -1,12 +1,18 @@
 import { useState, useEffect, useContext, createContext } from 'react';
 
-type SomeEvent = NoteOnEvent | NoteOffEvent | ProgramChangeEvent;
+type AnyEvent = NoteOnEvent | NoteOffEvent | ProgramChangeEvent;
+
+export enum EventType {
+    ProgramChange,
+    NoteOn,
+    NoteOff,
+}
 
 function noteOff(deltaTick: number, note: number): DeltaEvent {
     return {
         deltaTick,
         event: {
-            type: 'note-off',
+            type: EventType.NoteOff,
             note,
             channel: 0,
             velocity: 0x7f,
@@ -18,7 +24,7 @@ function noteOn(deltaTick: number, note: number): DeltaEvent {
     return {
         deltaTick,
         event: {
-            type: 'note-on',
+            type: EventType.NoteOn,
             note,
             channel: 0,
             velocity: 0x7f,
@@ -33,22 +39,21 @@ export function noteOnOff(deltaTick: number, duration: number, note: number): De
     ];
 }
 
-// TODO: Enum type?
 interface ProgramChangeEvent {
-    type: 'program-change',
+    type: EventType.ProgramChange;
     channel: number;
     program: number;
 };
 
 interface NoteOnEvent {
-    type: 'note-on',
+    type: EventType.NoteOn;
     channel: number;
     velocity: number;
     note: number;
 };
 
 interface NoteOffEvent {
-    type: 'note-off';
+    type: EventType.NoteOff;
     channel: number;
     velocity: number;
     note: number;
@@ -56,12 +61,12 @@ interface NoteOffEvent {
 
 interface AbsoluteEvent {
     tick: number;
-    event: SomeEvent;
+    event: AnyEvent;
 };
 
 interface DeltaEvent {
     deltaTick: number;
-    event: SomeEvent;
+    event: AnyEvent;
 };
 
 export enum Status {
@@ -206,7 +211,7 @@ export class Manager extends EventTarget {
         this.dispatchDevicesChanged();
     }
 
-    playEvent(event: SomeEvent) {
+    playEvent(event: AnyEvent) {
         if (!this.access) {
             console.warn('skipping event - MIDI not connected', event);
             return;
@@ -219,17 +224,17 @@ export class Manager extends EventTarget {
         }
 
         switch (event.type) {
-            case 'note-off': {
+            case EventType.NoteOff: {
                 const channel = event.channel & 0xf;
                 output.send([0x80 | channel, event.note & 0x7f, event.velocity & 0x7f]);
                 break;
             }
-            case 'note-on': {
+            case EventType.NoteOn: {
                 const channel = event.channel & 0xf;
                 output.send([0x90 | channel, event.note & 0x7f, event.velocity & 0x7f]);
                 break;
             }
-            case 'program-change': {
+            case EventType.ProgramChange: {
                 const channel = event.channel & 0xf;
                 output.send([0xc0 | channel, event.program & 0x7f]);
                 break;

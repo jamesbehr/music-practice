@@ -1,4 +1,4 @@
-import { useMIDI } from './midi';
+import { useMIDI, EventType } from './midi';
 import { isKeyBlack } from './notes';
 
 interface KeyboardProps {
@@ -28,7 +28,7 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
 
     function noteDown(note: number) {
         manager.playEvent({
-            type: 'note-on',
+            type: EventType.NoteOn,
             note: note,
             channel: 0,
             velocity: 0x7f,
@@ -37,7 +37,7 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
 
     function noteUp(note: number) {
         manager.playEvent({
-            type: 'note-off',
+            type: EventType.NoteOff,
             note: note,
             channel: 0,
             velocity: 0x7f,
@@ -53,7 +53,7 @@ export function Keyboard({ lowestMidiNote, highestMidiNote, keyWidth = 20, keyHe
                 <rect
                     className="black"
                     key={i}
-                    x={x - blackWidth/2}
+                    x={x - blackWidth / 2}
                     y={0}
                     width={blackWidth}
                     height={blackHeight}
