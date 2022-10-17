@@ -94,6 +94,7 @@ export class Manager extends EventTarget {
     access: WebMidi.MIDIAccess | null;
     status: Status;
     storage: PersistentStorage;
+    notes: Map<[number, number], boolean>;
 
     constructor(storage?: PersistentStorage) {
         super();
@@ -101,6 +102,7 @@ export class Manager extends EventTarget {
         this.access = null;
         this.status = Status.Unitialized;
         this.storage = storage || localStorageAdapater;
+        this.notes = new Map;
     }
 
     connect() {
@@ -200,14 +202,23 @@ export class Manager extends EventTarget {
         return this.access.outputs.get(id);
     }
 
-    setOutput(output: WebMidi.MIDIOutput) {
+    resetOutput() {
         const currentOutput = this.getOutput();
         if (currentOutput) {
-            // TODO: Clear any notes that were on
             currentOutput.clear();
+            this.notes.forEach((isNoteOn, [note, channel]) => {
+                if (isNoteOn) {
+                    const c = channel & 0xf;
+                    currentOutput.send([0x80 | c, note & 0x7f, 0x7f]);
+                }
+            });
         }
+    }
 
+    setOutput(output: WebMidi.MIDIOutput) {
+        this.resetOutput();
         this.storage.set('output', output.id);
+        this.notes = new Map;
         this.dispatchDevicesChanged();
     }
 
@@ -225,11 +236,15 @@ export class Manager extends EventTarget {
 
         switch (event.type) {
             case EventType.NoteOff: {
+                this.notes.set([event.note, event.channel], false);
+
                 const channel = event.channel & 0xf;
                 output.send([0x80 | channel, event.note & 0x7f, event.velocity & 0x7f]);
                 break;
             }
             case EventType.NoteOn: {
+                this.notes.set([event.note, event.channel], true);
+
                 const channel = event.channel & 0xf;
                 output.send([0x90 | channel, event.note & 0x7f, event.velocity & 0x7f]);
                 break;
