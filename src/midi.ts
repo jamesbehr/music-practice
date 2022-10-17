@@ -2,7 +2,7 @@ import { useState, useEffect, useContext, createContext } from 'react';
 
 type SomeEvent = NoteOnEvent | NoteOffEvent | ProgramChangeEvent;
 
-function noteOff(deltaTick: number, note: number) : DeltaEvent {
+function noteOff(deltaTick: number, note: number): DeltaEvent {
     return {
         deltaTick,
         event: {
@@ -14,7 +14,7 @@ function noteOff(deltaTick: number, note: number) : DeltaEvent {
     };
 }
 
-function noteOn(deltaTick: number, note: number) : DeltaEvent {
+function noteOn(deltaTick: number, note: number): DeltaEvent {
     return {
         deltaTick,
         event: {
@@ -26,7 +26,7 @@ function noteOn(deltaTick: number, note: number) : DeltaEvent {
     };
 }
 
-export function noteOnOff(deltaTick: number, duration: number, note: number) : DeltaEvent[] {
+export function noteOnOff(deltaTick: number, duration: number, note: number): DeltaEvent[] {
     return [
         noteOn(deltaTick, note),
         noteOff(deltaTick + duration, note),
@@ -64,43 +64,62 @@ interface DeltaEvent {
     event: SomeEvent;
 };
 
-enum Status {
+export enum Status {
     Unitialized,
     Unsupported,
     PermissionDenied,
     Success,
 }
 
-export class Manager extends EventTarget {
-    access : WebMidi.MIDIAccess | null;
-    output : WebMidi.MIDIOutput | null;
-    input : WebMidi.MIDIInput | null;
-    status: Status;
+interface PersistentStorage {
+    set(key: string, value: string): void;
+    get(key: string): string | null;
+}
 
-    constructor() {
+const localStorageAdapater = {
+    set(key: string, value: string): void {
+        window.localStorage.setItem(key, value);
+    },
+    get(key: string) {
+        return window.localStorage.getItem(key);
+    }
+};
+
+export class Manager extends EventTarget {
+    access: WebMidi.MIDIAccess | null;
+    status: Status;
+    storage: PersistentStorage;
+
+    constructor(storage?: PersistentStorage) {
         super();
 
-        // TODO: Store input/output selections in localstorage
         this.access = null;
-        this.output = null;
-        this.input = null;
         this.status = Status.Unitialized;
+        this.storage = storage || localStorageAdapater;
     }
 
     connect() {
         if (!window.navigator.requestMIDIAccess) {
             this.status = Status.Unsupported;
-            // TODO: Send state changed event
+            this.dispatchDevicesChanged();
+            return;
         }
 
-        window.navigator.requestMIDIAccess().then((midiAccess) => {
+        return window.navigator.requestMIDIAccess().then((midiAccess) => {
             this.access = midiAccess;
             this.status = Status.Success;
+
+            // Add event listeners to persisted inputs
+            const storedInput = this.getInput();
+            if (storedInput) {
+                storedInput.addEventListener('midimessage', this.handleMidiMessage);
+            }
+
             this.access.addEventListener('statechange', this.handleStateChange);
             this.dispatchDevicesChanged();
         }).catch((error) => {
             this.status = Status.PermissionDenied;
-            // TODO: Send state changed event
+            this.dispatchDevicesChanged();
         });
     }
 
@@ -130,15 +149,28 @@ export class Manager extends EventTarget {
         return [];
     }
 
-    setInput(input: WebMidi.MIDIInput) {
-        // Unsubscribe the previous input from events
-        if (this.input) {
-            this.input.removeEventListener('midimessage', this.handleMidiMessage);
+    getInput(): WebMidi.MIDIInput | undefined {
+        if (!this.access) {
+            return;
         }
 
-        this.input = input;
+        const id = this.storage.get('input');
+        if (!id) {
+            return;
+        }
 
-        this.input.addEventListener('midimessage', this.handleMidiMessage);
+        return this.access.inputs.get(id);
+    }
+
+    setInput(input: WebMidi.MIDIInput) {
+        // Unsubscribe the previous input from events
+        const currentInput = this.getInput();
+        if (currentInput) {
+            currentInput.removeEventListener('midimessage', this.handleMidiMessage);
+        }
+
+        this.storage.set('input', input.id);
+        input.addEventListener('midimessage', this.handleMidiMessage);
         this.dispatchDevicesChanged();
     }
 
@@ -150,13 +182,27 @@ export class Manager extends EventTarget {
         return [];
     }
 
-    setOutput(output: WebMidi.MIDIOutput) {
-        if (this.output !== null) {
-            // TODO: Clear any notes that were on
-            this.output.clear();
+    getOutput(): WebMidi.MIDIOutput | undefined {
+        if (!this.access) {
+            return;
         }
 
-        this.output = output;
+        const id = this.storage.get('output');
+        if (!id) {
+            return;
+        }
+
+        return this.access.outputs.get(id);
+    }
+
+    setOutput(output: WebMidi.MIDIOutput) {
+        const currentOutput = this.getOutput();
+        if (currentOutput) {
+            // TODO: Clear any notes that were on
+            currentOutput.clear();
+        }
+
+        this.storage.set('output', output.id);
         this.dispatchDevicesChanged();
     }
 
@@ -166,7 +212,8 @@ export class Manager extends EventTarget {
             return;
         }
 
-        if (!this.output) {
+        const output = this.getOutput();
+        if (!output) {
             console.warn('skipping event - output not connected', event);
             return;
         }
@@ -174,17 +221,17 @@ export class Manager extends EventTarget {
         switch (event.type) {
             case 'note-off': {
                 const channel = event.channel & 0xf;
-                this.output.send([0x80 | channel, event.note & 0x7f, event.velocity & 0x7f]);
+                output.send([0x80 | channel, event.note & 0x7f, event.velocity & 0x7f]);
                 break;
             }
             case 'note-on': {
                 const channel = event.channel & 0xf;
-                this.output.send([0x90 | channel, event.note & 0x7f, event.velocity & 0x7f]);
+                output.send([0x90 | channel, event.note & 0x7f, event.velocity & 0x7f]);
                 break;
             }
             case 'program-change': {
                 const channel = event.channel & 0xf;
-                this.output.send([0xc0 | channel, event.program & 0x7f]);
+                output.send([0xc0 | channel, event.program & 0x7f]);
                 break;
             }
             default:

@@ -26,7 +26,7 @@ interface Question {
     nextNote: number;
 };
 
-const clefs : Clef[] = [
+const clefs: Clef[] = [
     {
         glyph: 'gClef',
         line: 3,
@@ -48,7 +48,7 @@ const intervals = [
     -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12
 ]; // semitones
 
-const questions : Question[] = [];
+const questions: Question[] = [];
 clefs.forEach((clef) => {
     for (let note = clef.lowestMidiNote; note <= clef.highestMidiNote; note++) {
         intervals.forEach((interval) => {
@@ -95,7 +95,7 @@ function QuestionDisplay({ note, clef, nextNote, showAsSharp }: Question) {
         <div>
             <SingleNote
                 accidentalGlyph={isKeyBlack(note) ? accidental : undefined}
-                note={clef.line*2 - staffLine}
+                note={clef.line * 2 - staffLine}
                 noteGlyph="noteWhole"
                 clefGlyph={clef.glyph}
                 clefLine={clef.line}
@@ -125,8 +125,8 @@ function Thing() {
                             type="radio"
                             name="input"
                             onChange={() => manager.setInput(port)}
-                            checked={manager.input !== null && manager.input.id === port.id}
-                            />
+                            checked={manager.getInput()?.id === port.id}
+                        />
                         {port.name}
                     </label>
                 </div>
@@ -140,14 +140,14 @@ function Thing() {
                             type="radio"
                             name="output"
                             onChange={() => manager.setOutput(port)}
-                            checked={manager.output !== null && manager.output.id === port.id}
-                            />
+                            checked={manager.getOutput()?.id === port.id}
+                        />
                         {port.name}
                     </label>
                 </div>
             ))}
 
-            <QuestionDisplay {...questions[678] } />
+            <QuestionDisplay {...questions[678]} />
         </div>
     )
 }
