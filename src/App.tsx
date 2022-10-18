@@ -1,8 +1,6 @@
-import React, { useState, useEffect, useContext, createContext } from 'react';
-import logo from './logo.svg';
 import './App.css';
-import { Manager, Player, defaultManager, useMIDI, MIDIOutputContext, noteOnOff, EventType } from './midi';
-import { SingleNote, Accidental } from './Notation';
+import { Player, defaultManager, useMIDI, noteOnOff, EventType } from './midi';
+import { SingleNote } from './Notation';
 import { Keyboard } from './Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from './notes';
 import { quiz, Status, Props } from './Quiz';

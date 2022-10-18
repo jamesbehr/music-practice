@@ -102,7 +102,7 @@ export class Manager extends EventTarget {
         this.access = null;
         this.status = Status.Unitialized;
         this.storage = storage || localStorageAdapater;
-        this.notes = new Map;
+        this.notes = new Map();
     }
 
     connect() {
@@ -124,13 +124,13 @@ export class Manager extends EventTarget {
 
             this.access.addEventListener('statechange', this.handleStateChange);
             this.dispatchDevicesChanged();
-        }).catch((error) => {
+        }).catch(() => {
             this.status = Status.PermissionDenied;
             this.dispatchDevicesChanged();
         });
     }
 
-    handleStateChange = (event: Event) => {
+    handleStateChange = (_: Event) => {
         this.dispatchDevicesChanged();
     };
 
@@ -259,7 +259,7 @@ export class Manager extends EventTarget {
     setOutput(output: WebMidi.MIDIOutput) {
         this.resetOutput();
         this.storage.set('output', output.id);
-        this.notes = new Map;
+        this.notes = new Map();
         this.dispatchDevicesChanged();
     }
 
@@ -356,8 +356,6 @@ export class Player {
             clearTimeout(this.timeoutId);
         }
 
-        const startedAt = window.performance.now();
-
         const tick = (startTime?: number) => {
             const currentTime = window.performance.now();
             const msPerTick = this.msPerBeat / this.ticksPerBeat;
@@ -391,7 +389,7 @@ export class Player {
     }
 }
 
-export const defaultManager = new Manager;
+export const defaultManager = new Manager();
 export const MIDIOutputContext = createContext<Manager>(defaultManager);
 
 // TODO: Maybe have a separate thing for each output/inputs/state

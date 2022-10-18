@@ -1,4 +1,3 @@
-import { useContext, createContext } from 'react';
 import bravuraMetadata from './smufl/bravura_metadata.json';
 import glyphNames from './smufl/glyphnames.json';
 
@@ -62,8 +61,8 @@ interface PositionedGlyph {
 
 function glyphBoundingBox(glyph: keyof typeof bravuraMetadata.glyphBBoxes, glyphLine: number) {
     const { bBoxNE, bBoxSW } = bravuraMetadata.glyphBBoxes[glyph];
-    const [right, top] = bBoxNE;
-    const [left, bottom] = bBoxSW;
+    const top = bBoxNE[1];
+    const bottom = bBoxSW[1];
     return { top: top - glyphLine, bottom: bottom - glyphLine };
 }
 
