@@ -24,6 +24,9 @@ interface Question {
     showAsSharp: boolean;
     note: number;
     nextNote: number;
+
+    // MIDI Program to play the notes through
+    program: number;
 };
 
 const clefs: Clef[] = [
@@ -56,8 +59,7 @@ function QuestionDisplay({ question, answer }: Props<Question, number[]>) {
                 event: {
                     type: EventType.ProgramChange,
                     channel: 0,
-                    // program: 25, // Acoustic steel guitar
-                    program: 0,
+                    program: question.program,
                 },
             },
             ...noteOnOff(0, 1, note),
@@ -134,6 +136,7 @@ const Quiz = quiz<Question, number[]>({
             const note = random(clef.lowestMidiNote, clef.highestMidiNote);
 
             return {
+                program: random(0, 25), // Grand Piano - Acoustic steel guitar
                 clef,
                 note,
                 nextNote: note + interval,
