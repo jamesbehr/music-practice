@@ -68,7 +68,6 @@ function QuestionDisplay({ question, answer }: Props<Question, number[]>) {
     }
 
     function handleKeyDown(note: number) {
-        console.log(note);
         answer((answer) => [...answer, note]);
     }
 
@@ -104,7 +103,7 @@ const Quiz = quiz<Question, number[]>({
     title: 'Interval recognition',
     description: 'Two notes will be played sequentially, with the first note shown on the staff below. Using the configured MIDI input device or the on-screen piano, play both notes.',
     component: QuestionDisplay,
-    determineQuestionState(question, answer) {
+    determineQuestionStatus(question, answer) {
         switch (answer.length) {
             case 0:
                 return Status.Unanswered;
