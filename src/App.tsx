@@ -100,6 +100,7 @@ const intervals = [
 ]; // semitones
 
 const Quiz = quiz<Question, number[]>({
+    id: 'interval-recognition',
     title: 'Interval recognition',
     description: 'Two notes will be played sequentially, with the first note shown on the staff below. Using the configured MIDI input device or the on-screen piano, play both notes.',
     component: QuestionDisplay,

@@ -22,6 +22,9 @@ export interface Props<Question, Answer> {
 }
 
 interface Definition<Question, Answer> {
+    // Unique id for the quiz
+    id: string;
+
     title: string;
     description: string;
     generateQuestions(): Question[];
@@ -83,13 +86,66 @@ function generate<Question, Answer>(definition: Definition<Question, Answer>) {
     return { questions, answers };
 }
 
-export function quiz<Question, Answer>(definition: Definition<Question, Answer>) {
+function definitionKey<Question, Answer>(definition: Definition<Question, Answer>): string {
+    return `${definition.id}.state`;
+}
+
+declare global {
+    interface Window {
+        // This field is added during Webpack HTML compilation and contains a
+        // hash of the bundle
+        bundleHash: string
+    }
+}
+
+interface StoredState<State> {
+    state: State;
+    hash: string;
+}
+
+function buildInitialState<Question, Answer>(definition: Definition<Question, Answer>): State<Question, Answer> {
+    // Restore any persisted state, so you can pick up a practise session from
+    // where you left off.
+    const serializedState = window.localStorage.getItem(definitionKey(definition));
+    if (serializedState !== null) {
+        const storedState = JSON.parse(serializedState) as StoredState<State<Question, Answer>>;
+        assert(typeof storedState === 'object', 'state should be an object');
+
+        // Compare the store hash against the current bundle hash. If the
+        // hashes differ, the state might have been stored using an older
+        // bundle and the shape of the data might have changed - its probably
+        // safer to just regenerate the questions from scratch.
+        if (storedState.hash === window.bundleHash) {
+            return storedState.state;
+        }
+    }
+
     const { questions, answers } = generate(definition);
+    return { questions, answers, index: 0 };
+}
 
-    const initialState = { questions, answers, index: 0 };
+type Reducer<Q, A> = (state: State<Q, A>, action: Action<A>) => State<Q, A>;
 
-    // TODO: We should log all the question timings, events, etc. and write it to disk
-    function reducer(state: State<Question, Answer>, action: Action<Answer>) {
+// Wraps a reducer so that it perists its state to localStorage
+function storeState<Q, A>(definition: Definition<Q, A>, reducer: Reducer<Q, A>): Reducer<Q, A> {
+    return function(state: State<Q, A>, action: Action<A>) {
+        const nextState = reducer(state, action);
+        const storedState: StoredState<State<Q, A>> = {
+            state: nextState,
+            hash: window.bundleHash,
+        };
+
+        const serializedState = JSON.stringify(storedState);
+        window.localStorage.setItem(definitionKey(definition), serializedState);
+        return nextState;
+    }
+}
+
+export function quiz<Q, A>(definition: Definition<Q, A>) {
+    const initialState = buildInitialState(definition);
+
+    // TODO: Log all actions with times for stat generation
+    const reducer = storeState(definition, function reducer(state: State<Q, A>, action: Action<A>) {
         console.log(action);
 
         switch (action.type) {
@@ -115,7 +171,7 @@ export function quiz<Question, Answer>(definition: Definition<Question, Answer>)
             default:
                 return state;
         }
-    }
+    });
 
     function Component() {
         const [state, dispatch] = useReducer(reducer, initialState);
@@ -126,7 +182,7 @@ export function quiz<Question, Answer>(definition: Definition<Question, Answer>)
         const answer = state.answers[state.index]!;
         assert(answer, 'answer should not be empty');
 
-        function answerer(mutator: Mutator<Answer>) {
+        function answerer(mutator: Mutator<A>) {
             dispatch({
                 type: 'answer',
                 mutator,
@@ -145,6 +201,7 @@ export function quiz<Question, Answer>(definition: Definition<Question, Answer>)
 
         return (
             <div>
+                <pre>{window.bundleHash}</pre>
                 <h2>{definition.title}</h2>
                 <p>{definition.description}</p>
                 <definition.component question={question} answer={answerer} />
