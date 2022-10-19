@@ -74,7 +74,6 @@ function glyphHeightExtents(glyphs: PositionedGlyph[]) {
     return { top: Math.max(...tops), bottom: Math.min(...bottoms) };
 }
 
-// function glyphHeightExtents
 export function SingleNote({ note, clefLine, clefGlyph, noteGlyph, accidentalGlyph }: SingleNoteProps) {
     const clefPadding = 1;
     const noteLine = note * 0.5; // allow note to be placed between lines
