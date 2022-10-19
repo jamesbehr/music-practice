@@ -1,15 +1,10 @@
 import './App.css';
-import { Player, defaultManager, useMIDI, noteOnOff, EventType } from './midi';
+import { timed, noteOn, noteOff, MIDIEventType, MIDIPortStatus, useMIDIPorts, useMIDIOutput } from './midi';
 import { SingleNote } from './Notation';
 import { Keyboard } from './Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from './notes';
 import { quiz, Status, Props, SettingProps } from './Quiz';
 import { shuffle, random, choice } from './random';
-
-defaultManager.connect();
-
-const player = new Player(1, defaultManager);
-player.start();
 
 interface Clef {
     glyph: 'gClef' | 'fClef';
@@ -28,7 +23,9 @@ interface Settings {
     clefs: {
         trebleClef: ClefSettings;
         bassClef: ClefSettings;
-    }
+    };
+    midiInputId: string;
+    midiOutputId: string;
 }
 
 const clefNames: (keyof Settings['clefs'])[] = ['trebleClef', 'bassClef'];
@@ -42,6 +39,43 @@ interface Question {
     // MIDI Program to play the notes through
     program: number;
 };
+
+type MIDIPortsSettingsProps = SettingProps<string> & {
+    type: 'inputs' | 'outputs';
+};
+
+function MIDIPortsSettings({ type, value, onChange }: MIDIPortsSettingsProps) {
+    const ports = useMIDIPorts();
+
+    switch (ports.status) {
+        case MIDIPortStatus.Unitialized:
+            return <div>Loading...</div>;
+        case MIDIPortStatus.Unsupported:
+            return <div>Your browser does not support the Web MIDI API</div>;
+        case MIDIPortStatus.PermissionDenied:
+            return <div>Please allow this site to use MIDI</div>;
+    }
+
+    const allPorts = ports[type] as Map<string, WebMidi.MIDIPort>;
+
+    return (
+        <div>
+            {Array.from(allPorts.values()).map((port: WebMidi.MIDIPort) => (
+                <div key={port.id}>
+                    <label>
+                        <input
+                            type="radio"
+                            name={type}
+                            onChange={() => onChange(port.id)}
+                            checked={value === port.id}
+                        />
+                        {port.name}
+                    </label>
+                </div>
+            ))}
+        </div>
+    );
+}
 
 // TODO: Show both lowest and highest notes
 // TODO: Set notes from MIDI instruments
@@ -94,18 +128,22 @@ function QuestionDisplay({ question, answer, settings }: Props<Question, number[
     const staffLine = unalter(note) - unalter(clef.midiNote);
     const accidental = showAsSharp ? 'accidentalSharp' : 'accidentalFlat';
 
+    const output = useMIDIOutput(settings.midiOutputId, 1);
+
     function playNote() {
-        player.addEvents([
+        output.enqueueTimedEvents([
             {
-                deltaTick: 0,
+                tick: 0,
                 event: {
-                    type: EventType.ProgramChange,
+                    type: MIDIEventType.ProgramChange,
                     channel: 0,
                     program: question.program,
                 },
             },
-            ...noteOnOff(0, 1, note),
-            ...noteOnOff(1, 1, nextNote),
+            timed(0, noteOn(note)),
+            timed(1, noteOff(note)),
+            timed(1, noteOn(nextNote)),
+            timed(2, noteOff(nextNote)),
         ]);
     }
 
@@ -131,6 +169,8 @@ function QuestionDisplay({ question, answer, settings }: Props<Question, number[
                 lowestMidiNote={lowestMidiNote}
                 highestMidiNote={highestMidiNote}
                 onKeyDown={handleKeyDown}
+                outputId={settings.midiOutputId}
+                inputId={settings.midiInputId}
             />
         </div>
     )
@@ -148,6 +188,8 @@ const Quiz = quiz<Question, number[], Settings>({
     description: 'Two notes will be played sequentially, with the first note shown on the staff below. Using the configured MIDI input device or the on-screen piano, play both notes.',
     component: QuestionDisplay,
     settings: {
+        midiInputId: '',
+        midiOutputId: '',
         clefs: {
             trebleClef: {
                 clef: {
@@ -171,22 +213,29 @@ const Quiz = quiz<Question, number[], Settings>({
             },
         },
     },
-    settingsComponent({ clefs }) {
+    settingsComponent({ clefs, midiInputId, midiOutputId }) {
         return (
             <div>
-                {clefNames.map((clefName) => {
-                    const value = clefs.value[clefName];
+                <h2>MIDI Input</h2>
+                <MIDIPortsSettings {...midiInputId} type="inputs" />
+                <h2>MIDI Output</h2>
+                <MIDIPortsSettings {...midiOutputId} type="outputs" />
+                <h2>Clefs</h2>
+                {
+                    clefNames.map((clefName) => {
+                        const value = clefs.value[clefName];
 
-                    function onChange(newValue: ClefSettings) {
-                        clefs.onChange({
-                            ...clefs.value,
-                            [clefName]: newValue,
-                        });
-                    }
+                        function onChange(newValue: ClefSettings) {
+                            clefs.onChange({
+                                ...clefs.value,
+                                [clefName]: newValue,
+                            });
+                        }
 
-                    return <SingleClefSettings key={clefName} value={value} onChange={onChange} />
-                })}
-            </div>
+                        return <SingleClefSettings key={clefName} value={value} onChange={onChange} />
+                    })
+                }
+            </div >
         );
     },
     determineQuestionStatus(question, answer) {
@@ -238,52 +287,10 @@ const Quiz = quiz<Question, number[], Settings>({
     }
 });
 
-function Thing() {
-    const { manager } = useMIDI();
-
-    // TODO: Render when MIDI error
-
-    return (
-        <div>
-            <h1>Inputs</h1>
-            {manager.inputs().map(port => (
-                <div key={port.id}>
-                    <label>
-                        <input
-                            type="radio"
-                            name="input"
-                            onChange={() => manager.setInput(port)}
-                            checked={manager.getInput()?.id === port.id}
-                        />
-                        {port.name}
-                    </label>
-                </div>
-            ))}
-
-            <h1>Outputs</h1>
-            {manager.outputs().map(port => (
-                <div key={port.id}>
-                    <label>
-                        <input
-                            type="radio"
-                            name="output"
-                            onChange={() => manager.setOutput(port)}
-                            checked={manager.getOutput()?.id === port.id}
-                        />
-                        {port.name}
-                    </label>
-                </div>
-            ))}
-
-            <Quiz />
-        </div>
-    )
-}
-
 function App() {
     return (
         <div className="App">
-            <Thing />
+            <Quiz />
         </div>
     );
 }

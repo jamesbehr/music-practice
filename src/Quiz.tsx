@@ -29,7 +29,7 @@ export type SettingProps<P> = {
 }
 
 export type SettingsProps<T> = {
-    [P in keyof T]: SettingProps<T[P]>;
+    [P in keyof T]-?: SettingProps<T[P]>;
 };
 
 interface Definition<Q, A, T extends object> {
@@ -64,7 +64,8 @@ interface Definition<Q, A, T extends object> {
     // Component to render the current question
     component: React.ComponentType<Props<Q, A, T>>;
 
-    // A type to hold the settings. Should also contain default values.
+    // A type to hold the settings. Should also contain default values. Do not
+    // use optional types here so we can enumerate over each setting.
     settings: T;
 
     // A component to render the UI to modify every setting
@@ -261,6 +262,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
 
             return [key, { value, onChange }];
         });
+
 
         if (!question || !answer) {
             return (

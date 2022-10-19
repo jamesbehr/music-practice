@@ -1,4 +1,5 @@
-import { useRealtimeMIDI, EventType } from './midi';
+import { useCallback } from 'react';
+import { useMIDIOutput, useMIDIInput, MIDIEvent, MIDIEventType, noteOn, noteOff } from './midi';
 import { isKeyBlack } from './notes';
 
 interface KeyboardProps {
@@ -8,34 +9,39 @@ interface KeyboardProps {
     keyHeight?: number;
     onKeyDown?: (note: number) => void;
     onKeyUp?: (note: number) => void;
+    outputId: string;
+    inputId: string;
 };
 
-export function Keyboard({ onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 20, keyHeight = 100 }: KeyboardProps) {
-    const { noteOn, noteOff } = useRealtimeMIDI((event) => {
-        if (event.detail.type === EventType.NoteOff) {
+export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 20, keyHeight = 100 }: KeyboardProps) {
+    const handler = useCallback((event: MIDIEvent) => {
+        if (event.type === MIDIEventType.NoteOff) {
             if (onKeyUp) {
-                onKeyUp(event.detail.note);
+                onKeyUp(event.note);
             }
-        } else if (event.detail.type === EventType.NoteOn) {
+        } else if (event.type === MIDIEventType.NoteOn) {
             if (onKeyDown) {
-                onKeyDown(event.detail.note);
+                onKeyDown(event.note);
             }
         }
-    });
+    }, [onKeyUp, onKeyDown]);
+
+    useMIDIInput(inputId, handler);
+    const output = useMIDIOutput(outputId, 1);
 
     if (lowestMidiNote >= highestMidiNote) {
         throw new Error('lowestMidiNote must be < highestMidiNote');
     }
 
     function keyDown(note: number) {
-        noteOn(note);
+        output.sendEvent(noteOn(note));
         if (onKeyDown) {
             onKeyDown(note);
         }
     }
 
     function keyUp(note: number) {
-        noteOff(note);
+        output.sendEvent(noteOff(note));
         if (onKeyUp) {
             onKeyUp(note);
         }

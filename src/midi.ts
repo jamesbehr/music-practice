@@ -1,325 +1,106 @@
-import { useState, useEffect, useContext, createContext } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 
-type AnyEvent = NoteOnEvent | NoteOffEvent | ProgramChangeEvent;
+export type MIDIEvent = NoteOnMIDIEvent | NoteOffMIDIEvent | ProgramChangeMIDIEvent;
 
-export enum EventType {
+export enum MIDIEventType {
     ProgramChange,
     NoteOn,
     NoteOff,
 }
 
-function noteOff(deltaTick: number, note: number): DeltaEvent {
-    return {
-        deltaTick,
-        event: {
-            type: EventType.NoteOff,
-            note,
-            channel: 0,
-            velocity: 0x7f,
-        },
-    };
+export function noteOff(note: number, channel: number = 0, velocity: number = 0x7f): NoteOffMIDIEvent {
+    return { type: MIDIEventType.NoteOff, note, channel, velocity };
 }
 
-function noteOn(deltaTick: number, note: number): DeltaEvent {
-    return {
-        deltaTick,
-        event: {
-            type: EventType.NoteOn,
-            note,
-            channel: 0,
-            velocity: 0x7f,
-        },
-    };
+export function noteOn(note: number, channel: number = 0, velocity: number = 0x7f): NoteOnMIDIEvent {
+    return { type: MIDIEventType.NoteOn, note, channel, velocity };
 }
 
-export function noteOnOff(deltaTick: number, duration: number, note: number): DeltaEvent[] {
-    return [
-        noteOn(deltaTick, note),
-        noteOff(deltaTick + duration, note),
-    ];
+export function timed(tick: number, event: MIDIEvent): EventAt {
+    return { tick, event };
 }
 
-interface ProgramChangeEvent {
-    type: EventType.ProgramChange;
+interface ProgramChangeMIDIEvent {
+    type: MIDIEventType.ProgramChange;
     channel: number;
     program: number;
 };
 
-interface NoteOnEvent {
-    type: EventType.NoteOn;
+interface NoteOnMIDIEvent {
+    type: MIDIEventType.NoteOn;
     channel: number;
     velocity: number;
     note: number;
 };
 
-interface NoteOffEvent {
-    type: EventType.NoteOff;
+interface NoteOffMIDIEvent {
+    type: MIDIEventType.NoteOff;
     channel: number;
     velocity: number;
     note: number;
 };
 
-interface AbsoluteEvent {
+interface EventAt {
     tick: number;
-    event: AnyEvent;
+    event: MIDIEvent;
 };
 
-interface DeltaEvent {
-    deltaTick: number;
-    event: AnyEvent;
-};
-
-export enum Status {
+export enum MIDIPortStatus {
     Unitialized,
     Unsupported,
     PermissionDenied,
     Success,
 }
 
-interface PersistentStorage {
-    set(key: string, value: string): void;
-    get(key: string): string | null;
+interface Ports {
+    status: MIDIPortStatus;
+    outputs: Map<string, WebMidi.MIDIOutput>;
+    inputs: Map<string, WebMidi.MIDIInput>;
 }
 
-const localStorageAdapater = {
-    set(key: string, value: string): void {
-        window.localStorage.setItem(key, value);
-    },
-    get(key: string) {
-        return window.localStorage.getItem(key);
-    }
-};
+interface DeviceInfo {
+    id: string
+    manufacturer: string;
+    name: string;
+    state: WebMidi.MIDIPortDeviceState;
+}
 
-export class Manager extends EventTarget {
-    access: WebMidi.MIDIAccess | null;
-    status: Status;
-    storage: PersistentStorage;
-    notes: Map<[number, number], boolean>;
-
-    constructor(storage?: PersistentStorage) {
-        super();
-
-        this.access = null;
-        this.status = Status.Unitialized;
-        this.storage = storage || localStorageAdapater;
-        this.notes = new Map();
-    }
-
-    connect() {
-        if (!window.navigator.requestMIDIAccess) {
-            this.status = Status.Unsupported;
-            this.dispatchDevicesChanged();
-            return;
-        }
-
-        return window.navigator.requestMIDIAccess().then((midiAccess) => {
-            this.access = midiAccess;
-            this.status = Status.Success;
-
-            // Add event listeners to persisted inputs
-            const storedInput = this.getInput();
-            if (storedInput) {
-                storedInput.addEventListener('midimessage', this.handleMidiMessage);
-            }
-
-            this.access.addEventListener('statechange', this.handleStateChange);
-            this.dispatchDevicesChanged();
-        }).catch(() => {
-            this.status = Status.PermissionDenied;
-            this.dispatchDevicesChanged();
-        });
-    }
-
-    handleStateChange = (_: Event) => {
-        this.dispatchDevicesChanged();
+function deviceInfoFromPort(port: WebMidi.MIDIPort): DeviceInfo {
+    return {
+        id: port.id,
+        name: port.name || '',
+        manufacturer: port.manufacturer || '',
+        state: port.state,
     };
+}
 
-    handleMidiMessage = (event: Event) => {
-        const midiEvent = event as WebMidi.MIDIMessageEvent;
-        const a = midiEvent.data[0];
-        const channel = a & 0xf;
+interface Output {
+    info: DeviceInfo;
+    enqueueTimedEvents(events: EventAt[]): void;
+    sendEvent(event: MIDIEvent): void;
+}
 
-        switch (a & 0xf0) {
-            case 0x80: {
-                const note = midiEvent.data[1] & 0x7f;
-                const velocity = midiEvent.data[2] & 0x7f;
-
-                this.dispatchEvent(new CustomEvent('midi-event', {
-                    detail: {
-                        type: EventType.NoteOff,
-                        channel,
-                        velocity,
-                        note,
-                    },
-                }));
-                break;
-            }
-            case 0x90: {
-                const note = midiEvent.data[1] & 0x7f;
-                const velocity = midiEvent.data[2] & 0x7f;
-
-                // The MIDI spec also allows notes to be switched off by
-                // sending note on with zero velocity, normalize handling on
-                // these types of events.
-                const type = velocity ? EventType.NoteOn : EventType.NoteOff;
-
-                this.dispatchEvent(new CustomEvent('midi-event', {
-                    detail: {
-                        type,
-                        channel,
-                        velocity,
-                        note,
-                    },
-                }));
-                break;
-            }
-            default:
-                console.warn('unhandled input MIDI event', midiEvent.data);
-                break;
-        }
-    };
-
-    dispatchDevicesChanged() {
-        this.dispatchEvent(new Event('devices-changed'));
-    }
-
-    disconnect() {
-        if (this.access) {
-            this.access.removeEventListener('statechange', this.handleStateChange);
-        }
-    }
-
-    inputs(): WebMidi.MIDIInput[] {
-        if (this.access) {
-            return Array.from(this.access.inputs.values());
-        }
-
-        return [];
-    }
-
-    getInput(): WebMidi.MIDIInput | undefined {
-        if (!this.access) {
-            return;
-        }
-
-        const id = this.storage.get('input');
-        if (!id) {
-            return;
-        }
-
-        return this.access.inputs.get(id);
-    }
-
-    setInput(input: WebMidi.MIDIInput) {
-        // Unsubscribe the previous input from events
-        const currentInput = this.getInput();
-        if (currentInput) {
-            currentInput.removeEventListener('midimessage', this.handleMidiMessage);
-        }
-
-        this.storage.set('input', input.id);
-        input.addEventListener('midimessage', this.handleMidiMessage);
-        this.dispatchDevicesChanged();
-    }
-
-    outputs(): WebMidi.MIDIOutput[] {
-        if (this.access) {
-            return Array.from(this.access.outputs.values());
-        }
-
-        return [];
-    }
-
-    getOutput(): WebMidi.MIDIOutput | undefined {
-        if (!this.access) {
-            return;
-        }
-
-        const id = this.storage.get('output');
-        if (!id) {
-            return;
-        }
-
-        return this.access.outputs.get(id);
-    }
-
-    resetOutput() {
-        const currentOutput = this.getOutput();
-        if (currentOutput) {
-            currentOutput.clear();
-            this.notes.forEach((isNoteOn, [note, channel]) => {
-                if (isNoteOn) {
-                    const c = channel & 0xf;
-                    currentOutput.send([0x80 | c, note & 0x7f, 0x7f]);
-                }
-            });
-        }
-    }
-
-    setOutput(output: WebMidi.MIDIOutput) {
-        this.resetOutput();
-        this.storage.set('output', output.id);
-        this.notes = new Map();
-        this.dispatchDevicesChanged();
-    }
-
-    playEvent(event: AnyEvent) {
-        if (!this.access) {
-            console.warn('skipping event - MIDI not connected', event);
-            return;
-        }
-
-        const output = this.getOutput();
-        if (!output) {
-            console.warn('skipping event - output not connected', event);
-            return;
-        }
-
-        switch (event.type) {
-            case EventType.NoteOff: {
-                this.notes.set([event.note, event.channel], false);
-
-                const channel = event.channel & 0xf;
-                output.send([0x80 | channel, event.note & 0x7f, event.velocity & 0x7f]);
-                break;
-            }
-            case EventType.NoteOn: {
-                this.notes.set([event.note, event.channel], true);
-
-                const channel = event.channel & 0xf;
-                output.send([0x90 | channel, event.note & 0x7f, event.velocity & 0x7f]);
-                break;
-            }
-            case EventType.ProgramChange: {
-                const channel = event.channel & 0xf;
-                output.send([0xc0 | channel, event.program & 0x7f]);
-                break;
-            }
-            default:
-                console.warn('unhandled event', event);
-                break;
-        }
-    }
-};
-
-// TODO: Maybe this should be a track player, since tracks can have independent tempos?
-export class Player {
+export class RealOutput {
     timeoutId: number;
     msPerBeat: number;
     ticksPerBeat: number;
     tick: number;
     startTime: number;
-    events: AbsoluteEvent[];
-    manager: Manager;
+    events: EventAt[];
+    output: WebMidi.MIDIOutput;
+    notes: Map<[number, number], boolean>;
+    info: DeviceInfo;
 
-    constructor(ticksPerBeat: number, manager: Manager) {
+    constructor(ticksPerBeat: number, output: WebMidi.MIDIOutput) {
         this.timeoutId = 0;
         this.msPerBeat = 1000 / (120 / 60); // 120 bpm
         this.tick = 0;
         this.ticksPerBeat = ticksPerBeat;
         this.startTime = performance.now();
         this.events = [];
-        this.manager = manager;
+        this.output = output;
+        this.notes = new Map();
+        this.info = deviceInfoFromPort(output);
     };
 
     // TODO: This should be an event that sets the tempo
@@ -331,10 +112,9 @@ export class Player {
         }
     }
 
-    addEvents(events: DeltaEvent[]) {
-        // TODO: Insert sorted
-        this.events.push(...events.map(({ deltaTick, event }) => ({
-            tick: this.tick + deltaTick,
+    enqueueTimedEvents(events: EventAt[]) {
+        this.events.push(...events.map(({ tick, event }) => ({
+            tick: this.tick + tick,
             event,
         })));
 
@@ -349,6 +129,33 @@ export class Player {
 
             return 0;
         });
+    }
+
+    sendEvent(event: MIDIEvent) {
+        switch (event.type) {
+            case MIDIEventType.NoteOff: {
+                this.notes.set([event.note, event.channel], false);
+
+                const channel = event.channel & 0xf;
+                this.output.send([0x80 | channel, event.note & 0x7f, event.velocity & 0x7f]);
+                break;
+            }
+            case MIDIEventType.NoteOn: {
+                this.notes.set([event.note, event.channel], true);
+
+                const channel = event.channel & 0xf;
+                this.output.send([0x90 | channel, event.note & 0x7f, event.velocity & 0x7f]);
+                break;
+            }
+            case MIDIEventType.ProgramChange: {
+                const channel = event.channel & 0xf;
+                this.output.send([0xc0 | channel, event.program & 0x7f]);
+                break;
+            }
+            default:
+                console.warn('unhandled event', event);
+                break;
+        }
     }
 
     start() {
@@ -369,7 +176,7 @@ export class Player {
                 const event = this.events.shift()!;
 
                 if (event.tick === this.tick) {
-                    this.manager.playEvent(event.event);
+                    this.sendEvent(event.event);
                 } else {
                     console.warn('missed event', event, this.tick);
                 }
@@ -386,65 +193,145 @@ export class Player {
     stop() {
         window.clearTimeout(this.timeoutId);
         this.timeoutId = 0;
+        this.output.clear();
+        this.notes.forEach((isNoteOn, [note, channel]) => {
+            if (isNoteOn) {
+                const c = channel & 0xf;
+                this.output.send([0x80 | c, note & 0x7f, 0x7f]);
+            }
+        });
     }
 }
 
-export const defaultManager = new Manager();
-export const MIDIOutputContext = createContext<Manager>(defaultManager);
+export function useMIDIPorts(): Ports {
+    function state(status: MIDIPortStatus, outputs: WebMidi.MIDIOutputMap = new Map(), inputs: WebMidi.MIDIInputMap = new Map()) {
+        return { status, outputs, inputs };
+    }
 
-// TODO: Maybe have a separate thing for each output/inputs/state
-export function useMIDI() {
-    const manager = useContext(MIDIOutputContext);
-    const [state, forceUpdate] = useState({ manager });
+    const [ports, setPorts] = useState(state(MIDIPortStatus.Unitialized));
 
     useEffect(() => {
-        function update() {
-            forceUpdate({ manager: manager });
+        // TODO: useCallback
+        function handleStateChange(this: WebMidi.MIDIAccess) {
+            setPorts(state(MIDIPortStatus.Success, this.outputs, this.inputs));
         }
 
-        manager.addEventListener('devices-changed', update);
+        if (!window.navigator.requestMIDIAccess) {
+            setPorts(state(MIDIPortStatus.Unsupported));
+            return;
+        }
+
+        const promise = window.navigator.requestMIDIAccess();
+
+        promise.then((access) => {
+            access.addEventListener('statechange', handleStateChange);
+            setPorts(state(MIDIPortStatus.Success, access.outputs, access.inputs));
+        }).catch(() => {
+            setPorts(state(MIDIPortStatus.PermissionDenied));
+        });
 
         return function unsubscribe() {
-            manager.removeEventListener('devices-changed', update);
-        };
-    });
+            promise.then((access) => {
+                access.removeEventListener('statechange', handleStateChange);
+            });
+        }
+    }, []);
 
-    return state;
+    return ports;
 }
 
-// Hook to enable realtime MIDI input/playback
-export function useRealtimeMIDI(onMidiEvent: (event: CustomEvent<AnyEvent>) => void) {
-    const manager = useContext(MIDIOutputContext);
+// An output that does nothing
+function nullOutput(portId: string) {
+    return {
+        info: {
+            id: portId,
+            manufacturer: '',
+            name: '',
+            state: 'disconnected',
+        } as DeviceInfo,
+        enqueueTimedEvents() { },
+        start() { },
+        stop() { },
+        sendEvent() { },
+    };
+};
 
+export function useMIDIOutput(portId: string, ticksPerBeat: number): Output {
+    const ports = useMIDIPorts();
+
+    const wrappedOutput = useMemo(() => {
+        const output = ports.outputs.get(portId);
+        return output ? new RealOutput(ticksPerBeat, output) : nullOutput(portId);
+    }, [ports, portId, ticksPerBeat]);
+
+    // TODO: Ensure start/stop when port status changes (disconnect/connect)
     useEffect(() => {
-        function handler(event: Event) {
-            onMidiEvent(event as CustomEvent<AnyEvent>);
-        };
-
-        manager.addEventListener('midi-event', handler);
+        wrappedOutput.start();
 
         return function unsubscribe() {
-            manager.removeEventListener('midi-event', handler);
+            wrappedOutput.stop();
         };
-    });
+    }, [ports, portId, wrappedOutput]);
 
-    function noteOn(note: number) {
-        manager.playEvent({
-            type: EventType.NoteOn,
-            note: note,
-            channel: 0,
-            velocity: 0x7f,
-        });
+    return wrappedOutput;
+};
+
+function parseMIDIEvent(event: WebMidi.MIDIMessageEvent): MIDIEvent {
+    const a = event.data[0];
+    const channel = a & 0xf;
+
+    switch (a & 0xf0) {
+        case 0x80: {
+            const note = event.data[1] & 0x7f;
+            const velocity = event.data[2] & 0x7f;
+
+            return {
+                type: MIDIEventType.NoteOff,
+                channel,
+                velocity,
+                note,
+            };
+        }
+        case 0x90: {
+            const note = event.data[1] & 0x7f;
+            const velocity = event.data[2] & 0x7f;
+
+            // The MIDI spec also allows notes to be switched off by
+            // sending note on with zero velocity, normalize handling on
+            // these types of events.
+            const type = velocity ? MIDIEventType.NoteOn : MIDIEventType.NoteOff;
+
+            return {
+                type,
+                channel,
+                velocity,
+                note,
+            };
+        }
+        default:
+            console.warn('unhandled input MIDI event', event.data);
+            throw new Error('unhandled input MIDI event');
     }
+}
 
-    function noteOff(note: number) {
-        manager.playEvent({
-            type: EventType.NoteOff,
-            note: note,
-            channel: 0,
-            velocity: 0x7f,
-        });
-    }
+export function useMIDIInput(portId: string, handler: (e: MIDIEvent) => void) {
+    const ports = useMIDIPorts();
 
-    return { noteOn, noteOff };
+    const handleMidiMessage = useCallback((event: Event) => {
+        const midiEvent = event as WebMidi.MIDIMessageEvent;
+        handler(parseMIDIEvent(midiEvent));
+    }, [handler]);
+
+    useEffect(() => {
+        const input = ports.inputs.get(portId);
+        if (!input) {
+            return;
+        }
+
+        input.addEventListener('midimessage', handleMidiMessage);
+
+        return function unsubscribe() {
+            input.removeEventListener('midimessage', handleMidiMessage);
+        }
+    }, [portId, ports, handleMidiMessage]);
 }
