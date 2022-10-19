@@ -276,7 +276,7 @@ export function useMIDIOutput(portId: string, ticksPerBeat: number): Output {
     return wrappedOutput;
 };
 
-function parseMIDIEvent(event: WebMidi.MIDIMessageEvent): MIDIEvent {
+function parseMIDIEvent(event: WebMidi.MIDIMessageEvent): MIDIEvent | undefined {
     const a = event.data[0];
     const channel = a & 0xf;
 
@@ -310,7 +310,6 @@ function parseMIDIEvent(event: WebMidi.MIDIMessageEvent): MIDIEvent {
         }
         default:
             console.warn('unhandled input MIDI event', event.data);
-            throw new Error('unhandled input MIDI event');
     }
 }
 
@@ -319,7 +318,10 @@ export function useMIDIInput(portId: string, handler: (e: MIDIEvent) => void) {
 
     const handleMidiMessage = useCallback((event: Event) => {
         const midiEvent = event as WebMidi.MIDIMessageEvent;
-        handler(parseMIDIEvent(midiEvent));
+        const parsed = parseMIDIEvent(midiEvent);
+        if (parsed) {
+            handler(parsed);
+        }
     }, [handler]);
 
     useEffect(() => {
@@ -334,4 +336,29 @@ export function useMIDIInput(portId: string, handler: (e: MIDIEvent) => void) {
             input.removeEventListener('midimessage', handleMidiMessage);
         }
     }, [portId, ports, handleMidiMessage]);
+}
+
+// Accepts events from every connected MIDI input device
+export function useAnyMIDIInput(handler: (e: MIDIEvent) => void) {
+    const { inputs } = useMIDIPorts();
+
+    const handleMidiMessage = useCallback((event: Event) => {
+        const midiEvent = event as WebMidi.MIDIMessageEvent;
+        const parsed = parseMIDIEvent(midiEvent);
+        if (parsed) {
+            handler(parsed);
+        }
+    }, [handler]);
+
+    useEffect(() => {
+        inputs.forEach((input) => {
+            input.addEventListener('midimessage', handleMidiMessage);
+        });
+
+        return function unsubscribe() {
+            inputs.forEach((input) => {
+                input.removeEventListener('midimessage', handleMidiMessage);
+            });
+        }
+    }, [inputs, handleMidiMessage]);
 }

@@ -1,10 +1,11 @@
 import './App.css';
-import { timed, noteOn, noteOff, MIDIEventType, MIDIPortStatus, useMIDIPorts, useMIDIOutput } from './midi';
+import { timed, noteOn, noteOff, MIDIEventType, MIDIPortStatus, useMIDIPorts, useMIDIOutput, useAnyMIDIInput } from './midi';
 import { SingleNote } from './Notation';
 import { Keyboard } from './Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from './notes';
 import { quiz, Status, Props, SettingProps } from './Quiz';
 import { shuffle, random, choice } from './random';
+import { useState } from 'react';
 
 interface Clef {
     glyph: 'gClef' | 'fClef';
@@ -78,11 +79,25 @@ function MIDIPortsSettings({ type, value, onChange }: MIDIPortsSettingsProps) {
 }
 
 // TODO: Show both lowest and highest notes
-// TODO: Set notes from MIDI instruments
 function SingleClefSettings({ value, onChange }: SettingProps<ClefSettings>) {
     const note = value.lowestMidiNote;
     const { lowestMidiNote, highestMidiNote, clef, enabled } = value;
     const staffLine = unsharpen(note) - unsharpen(clef.midiNote);
+
+    const [mapping, setMapping] = useState(0);
+    useAnyMIDIInput((event) => {
+        if (mapping) {
+            if (event.type === MIDIEventType.NoteOn) {
+                if (mapping === 1) {
+                    onChange({ ...value, lowestMidiNote: event.note });
+                } else {
+                    onChange({ ...value, highestMidiNote: event.note });
+                }
+
+                setMapping(0);
+            }
+        }
+    });
 
     return (
         <div>
@@ -101,6 +116,7 @@ function SingleClefSettings({ value, onChange }: SettingProps<ClefSettings>) {
                 />
                 Enabled
             </label>
+            <button onClick={() => setMapping(1)}>Map note</button>
             <label>
                 <input
                     type="number"
@@ -109,6 +125,7 @@ function SingleClefSettings({ value, onChange }: SettingProps<ClefSettings>) {
                 />
                 Lowest note
             </label>
+            <button onClick={() => setMapping(2)}>Map note</button>
             <label>
                 <input
                     type="number"
@@ -117,7 +134,7 @@ function SingleClefSettings({ value, onChange }: SettingProps<ClefSettings>) {
                 />
                 Highest note
             </label>
-        </div>
+        </div >
     );
 }
 
