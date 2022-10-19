@@ -1,16 +1,16 @@
 {
   "files": {
     "main.css": "/music-practice/static/css/main.3ad141ba.css",
-    "main.js": "/music-practice/static/js/main.d9e60081.js",
+    "main.js": "/music-practice/static/js/main.9d7e94a2.js",
     "static/js/787.cabaaecc.chunk.js": "/music-practice/static/js/787.cabaaecc.chunk.js",
     "static/media/Bravura.woff2": "/music-practice/static/media/Bravura.a9abfd32a6f296cfa880.woff2",
     "index.html": "/music-practice/index.html",
     "main.3ad141ba.css.map": "/music-practice/static/css/main.3ad141ba.css.map",
-    "main.d9e60081.js.map": "/music-practice/static/js/main.d9e60081.js.map",
+    "main.9d7e94a2.js.map": "/music-practice/static/js/main.9d7e94a2.js.map",
     "787.cabaaecc.chunk.js.map": "/music-practice/static/js/787.cabaaecc.chunk.js.map"
   },
   "entrypoints": [
     "static/css/main.3ad141ba.css",
-    "static/js/main.d9e60081.js"
+    "static/js/main.9d7e94a2.js"
   ]
 }
