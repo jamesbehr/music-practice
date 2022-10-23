@@ -1,4 +1,4 @@
-import React, { useReducer, useEffect } from 'react';
+import React, { useReducer } from 'react';
 import { assert } from './util';
 
 export enum Status {
@@ -8,11 +8,33 @@ export enum Status {
     Correct,
 };
 
+interface HistoryEntry<Q, A> {
+    version: string;
+    question: Q;
+    answer: A;
+    startTime: Date;
+    endTime: Date;
+    status: Status;
+}
+
 interface State<Q, A, T> {
+    started: boolean;
     questions: Q[];
     answers: A[];
     settings: T;
+
+    /** The current index in the questions/answers array **/
     index: number;
+
+    /** The status of the current question **/
+    status: Status;
+
+    /**
+     * The time a question was answered. Will be reset each time a quiz is
+     * started or a question is answered
+     **/
+    startTime: Date;
+    history: HistoryEntry<Q, A>[];
 }
 
 type Mutator<A> = (current: A) => A;
@@ -33,7 +55,6 @@ export type SettingsProps<T> = {
 };
 
 interface Definition<Q, A, T extends object> {
-    // Unique id for the quiz
     id: string;
 
     title: string;
@@ -76,13 +97,15 @@ interface NextQuestionAction {
     type: 'next-question';
 }
 
-interface InitAction {
-    type: 'init';
+interface StartAction {
+    type: 'start';
+    timestamp: Date;
 }
 
 interface AnswerAction<A> {
     type: 'answer';
     mutator: Mutator<A>
+    timestamp: Date;
 }
 
 interface UpdateSettingsAction<T> {
@@ -90,7 +113,7 @@ interface UpdateSettingsAction<T> {
     values: T;
 }
 
-type Action<A, T> = NextQuestionAction | AnswerAction<A> | InitAction | UpdateSettingsAction<T>;
+type Action<A, T> = NextQuestionAction | AnswerAction<A> | StartAction | UpdateSettingsAction<T>;
 
 interface ControlsProps {
     status: Status;
@@ -146,6 +169,8 @@ interface StoredState<T> {
 }
 
 function buildInitialState<Q, A, T extends object>(definition: Definition<Q, A, T>): State<Q, A, T> {
+    let history: HistoryEntry<Q, A>[] = [];
+
     // Restore any persisted state, so you can pick up a practise session from
     // where you left off.
     const serializedState = window.localStorage.getItem(definitionKey(definition));
@@ -158,12 +183,23 @@ function buildInitialState<Q, A, T extends object>(definition: Definition<Q, A, 
         // bundle and the shape of the data might have changed - its probably
         // safer to just regenerate the questions from scratch.
         if (storedState.hash === window.bundleHash) {
-            return storedState.state;
+            return { ...storedState.state, started: false };
         }
+
+        history = storedState.state.history;
     }
 
     const { questions, answers } = generate(definition, definition.settings);
-    return { questions, answers, index: 0, settings: definition.settings };
+    return {
+        questions,
+        answers,
+        status: Status.Unanswered,
+        startTime: new Date(),
+        index: 0,
+        settings: definition.settings,
+        started: false,
+        history,
+    };
 }
 
 type Reducer<Q, A, T> = (state: State<Q, A, T>, action: Action<A, T>) => State<Q, A, T>;
@@ -183,32 +219,60 @@ function storeState<Q, A, T extends object>(definition: Definition<Q, A, T>, red
     }
 }
 
-export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
-    const initialState = buildInitialState(definition);
-
-    // TODO: Log all actions with times for stat generation
-    const reducer = storeState(definition, function reducer(state: State<Q, A, T>, action: Action<A, T>) {
-        console.log(action);
-
+function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
+    return function reducer(state: State<Q, A, T>, action: Action<A, T>): State<Q, A, T> {
         switch (action.type) {
+            case 'start':
+                return { ...state, started: true, startTime: action.timestamp };
             case 'next-question':
                 if (state.index + 1 >= state.questions.length) {
                     const { questions, answers } = generate(definition, state.settings);
-                    return { ...state, index: 0, questions, answers };
+                    return {
+                        ...state,
+                        index: 0,
+                        questions,
+                        answers,
+                        status: Status.Unanswered,
+                    };
                 }
-
-                return { ...state, index: state.index + 1 };
-            case 'answer':
-                const answer = action.mutator(state.answers[state.index]);
 
                 return {
                     ...state,
-                    answers: [
-                        ...state.answers.slice(0, state.index),
-                        answer,
-                        ...state.answers.slice(state.index + 1),
-                    ],
+                    index: state.index + 1,
+                    status: Status.Unanswered,
+                };
+            case 'answer':
+                const answer = action.mutator(state.answers[state.index]);
+                const question = state.questions[state.index];
+                const status = definition.determineQuestionStatus(question, answer, state.settings);
+                const answers = [
+                    ...state.answers.slice(0, state.index),
+                    answer,
+                    ...state.answers.slice(state.index + 1),
+                ];
+
+                // Only log history for completed answers
+                if (statusFinished(status)) {
+                    return {
+                        ...state,
+                        startTime: action.timestamp,
+                        status,
+                        answers,
+                        history: [
+                            ...state.history,
+                            {
+                                version: window.bundleHash,
+                                question: question,
+                                answer: answer,
+                                startTime: state.startTime,
+                                endTime: action.timestamp,
+                                status,
+                            }
+                        ],
+                    };
                 }
+
+                return { ...state, status, answers };
             case 'update-settings': {
                 // Changing settings might cause the questions to change, so
                 // they should be regenerated with the latest settings
@@ -224,20 +288,20 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
             default:
                 return state;
         }
-    });
+    };
+}
+
+export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
+    const initialState = buildInitialState(definition);
+    const reducer = storeState(definition, buildReducer(definition));
 
     function Component() {
         const [state, dispatch] = useReducer(reducer, initialState);
-        useEffect(() => {
-            dispatch({ type: 'init' });
-        }, []);
-
-        const question = state.questions[state.index];
-        const answer = state.answers[state.index];
 
         function answerer(mutator: Mutator<A>) {
             dispatch({
                 type: 'answer',
+                timestamp: new Date(),
                 mutator,
             })
         }
@@ -248,6 +312,10 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
 
         function setSettings(values: T) {
             dispatch({ type: 'update-settings', values });
+        }
+
+        function start() {
+            dispatch({ type: 'start', timestamp: new Date() });
         }
 
         const { settings } = state;
@@ -263,27 +331,39 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
             return [key, { value, onChange }];
         });
 
-
-        if (!question || !answer) {
+        if (!state.started) {
             return (
                 <div>
-                    <div>No questions. Check your settings</div>
+                    <h2>{definition.title}</h2>
+                    <p>{definition.description}</p>
                     <definition.settingsComponent {...Object.fromEntries(entries)} />
+                    <button onClick={start}>Start</button>
                 </div>
             );
         }
 
-        const status = definition.determineQuestionStatus(question, answer, settings);
+        const question = state.questions[state.index];
+        const answer = state.answers[state.index];
+
+        if (!question || !answer) {
+            return (
+                <div>
+                    <h2>{definition.title}</h2>
+                    <p>{definition.description}</p>
+                    <definition.settingsComponent {...Object.fromEntries(entries)} />
+                    <div>No questions. Check your settings</div>
+                </div>
+            );
+        }
 
         return (
             <div>
                 <pre>{window.bundleHash}</pre>
-                <definition.settingsComponent {...Object.fromEntries(entries)} />
                 <h2>{definition.title}</h2>
                 <p>{definition.description}</p>
+                <definition.settingsComponent {...Object.fromEntries(entries)} />
                 <definition.component question={question} answer={answerer} settings={settings} />
-
-                <Controls status={status} nextQuestion={nextQuestion} />
+                <Controls status={state.status} nextQuestion={nextQuestion} />
             </div>
         );
     }
