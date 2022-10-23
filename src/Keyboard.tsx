@@ -65,7 +65,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
         if (isKeyBlack(note)) {
             blackKeys.push(
                 <rect
-                    className="black"
+                    className="transition ease-in duration-100 fill-black stroke-black hover:fill-indigo-900"
                     key={i}
                     x={x - blackWidth / 2}
                     y={0}
@@ -78,7 +78,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
         } else {
             whiteKeys.push(
                 <rect
-                    className="white"
+                    className="transition ease-in duration-100 fill-white stroke-black hover:fill-indigo-200"
                     key={i}
                     x={x}
                     y={0}
@@ -94,7 +94,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
     }
 
     return (
-        <svg className="Keyboard" width={x} height={keyHeight}>
+        <svg width={x} height={keyHeight}>
             {whiteKeys}
             {blackKeys}
         </svg>

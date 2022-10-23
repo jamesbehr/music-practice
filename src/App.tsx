@@ -8,6 +8,7 @@ import { shuffle, random, choice } from './random';
 import { useState, Fragment } from 'react';
 import { Listbox, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
+import { setTimeout } from 'timers/promises';
 
 interface Clef {
     glyph: 'gClef' | 'fClef';
@@ -127,29 +128,58 @@ function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsPr
     );
 }
 
+interface NoteInputProps {
+    value: number;
+    onChange: (value: number) => void;
+    label: string
+}
+
+function NoteInput({ label, value, onChange }: NoteInputProps) {
+    const [mapping, setMapping] = useState(false);
+
+    useAnyMIDIInput((event) => {
+        if (mapping) {
+            if (event.type === MIDIEventType.NoteOn) {
+                onChange(event.note);
+                setMapping(false);
+            }
+        }
+    });
+
+    let timeout = 0;
+    function map() {
+        if (timeout) {
+            clearTimeout(timeout);
+        }
+
+        setMapping(true);
+        timeout = window.setTimeout(() => setMapping(false), 5000);
+    }
+
+    return (
+        <label className="block text-sm font-medium text-gray-700">
+            {label}
+            <div className="flex">
+                <input
+                    className="block w-full flex-1 rounded-none rounded-l-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 sm:text-sm"
+                    type="number"
+                    value={value}
+                    onChange={(e) => onChange(parseInt(e.target.value, 10))}
+                />
+                <button className="rounded-r-md border border-l-0 border-gray-300 bg-gray-50 hover:bg-gray-200 disabled:bg-gray-50 px-3 text-sm disabled:text-gray-500" disabled={mapping} onClick={() => map()}>Map note</button>
+            </div>
+        </label>
+    );
+}
+
 // TODO: Show both lowest and highest notes
 function SingleClefSettings({ value, onChange }: SettingProps<ClefSettings>) {
     const note = value.lowestMidiNote;
     const { lowestMidiNote, highestMidiNote, clef, enabled } = value;
     const staffLine = unsharpen(note) - unsharpen(clef.midiNote);
 
-    const [mapping, setMapping] = useState(0);
-    useAnyMIDIInput((event) => {
-        if (mapping) {
-            if (event.type === MIDIEventType.NoteOn) {
-                if (mapping === 1) {
-                    onChange({ ...value, lowestMidiNote: event.note });
-                } else {
-                    onChange({ ...value, highestMidiNote: event.note });
-                }
-
-                setMapping(0);
-            }
-        }
-    });
-
     return (
-        <div>
+        <div className="flex flex-row">
             <SingleNote
                 accidentalGlyph={isKeyBlack(note) ? 'accidentalSharp' : undefined}
                 note={clef.line * 2 - staffLine}
@@ -157,33 +187,27 @@ function SingleClefSettings({ value, onChange }: SettingProps<ClefSettings>) {
                 clefGlyph={clef.glyph}
                 clefLine={clef.line}
             />
-            <label>
-                <input
-                    type="checkbox"
-                    checked={enabled}
-                    onChange={() => onChange({ ...value, enabled: !enabled })}
-                />
-                Enabled
-            </label>
-            <button onClick={() => setMapping(1)}>Map note</button>
-            <label>
-                <input
-                    type="number"
+            <div className="flex flex-col">
+                <label>
+                    <input
+                        type="checkbox"
+                        checked={enabled}
+                        onChange={() => onChange({ ...value, enabled: !enabled })}
+                    />
+                    Enabled
+                </label>
+                <NoteInput
                     value={lowestMidiNote}
-                    onChange={(e) => onChange({ ...value, lowestMidiNote: parseInt(e.target.value, 10) })}
+                    onChange={(note) => onChange({ ...value, lowestMidiNote: note })}
+                    label="Lowest note"
                 />
-                Lowest note
-            </label>
-            <button onClick={() => setMapping(2)}>Map note</button>
-            <label>
-                <input
-                    type="number"
+                <NoteInput
                     value={highestMidiNote}
-                    onChange={(e) => onChange({ ...value, highestMidiNote: parseInt(e.target.value, 10) })}
+                    onChange={(note) => onChange({ ...value, highestMidiNote: note })}
+                    label="Highest note"
                 />
-                Highest note
-            </label>
-        </div >
+            </div>
+        </div>
     );
 }
 

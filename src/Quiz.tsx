@@ -1,5 +1,7 @@
 import React, { useReducer } from 'react';
 import { assert } from './util';
+import { Popover } from '@headlessui/react';
+import { Cog6ToothIcon } from '@heroicons/react/24/outline';
 
 export enum Status {
     Unanswered,
@@ -291,9 +293,38 @@ function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
     };
 }
 
+interface ComponentSettingsProps<T> {
+    settings: T;
+    setSettings: (newSettings: T) => void;
+}
+
 export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
     const initialState = buildInitialState(definition);
     const reducer = storeState(definition, buildReducer(definition));
+
+    function ComponentSettings({ settings, setSettings }: ComponentSettingsProps<T>) {
+        const entries = Object.entries(settings).map(([key, value]) => {
+            function onChange(newValue: typeof value) {
+                setSettings({
+                    ...settings,
+                    [key]: newValue,
+                });
+            }
+
+            return [key, { value, onChange }];
+        });
+
+        return (
+            <Popover className="relative">
+                <Popover.Button>
+                    <Cog6ToothIcon className="h-5 w-5" aria-hidden="true" />
+                </Popover.Button>
+                <Popover.Panel className="absolute z-10 shadow sm:overflow-hidden sm:rounded-md p-6 bg-white">
+                    <definition.settingsComponent {...Object.fromEntries(entries)} />
+                </Popover.Panel>
+            </Popover>
+        )
+    }
 
     function Component() {
         const [state, dispatch] = useReducer(reducer, initialState);
@@ -320,23 +351,12 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
 
         const { settings } = state;
 
-        const entries = Object.entries(settings).map(([key, value]) => {
-            function onChange(newValue: typeof value) {
-                setSettings({
-                    ...settings,
-                    [key]: newValue,
-                });
-            }
-
-            return [key, { value, onChange }];
-        });
-
         if (!state.started) {
             return (
                 <div>
                     <h2>{definition.title}</h2>
                     <p>{definition.description}</p>
-                    <definition.settingsComponent {...Object.fromEntries(entries)} />
+                    <ComponentSettings settings={state.settings} setSettings={setSettings} />
                     <button onClick={start}>Start</button>
                 </div>
             );
@@ -350,7 +370,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                 <div>
                     <h2>{definition.title}</h2>
                     <p>{definition.description}</p>
-                    <definition.settingsComponent {...Object.fromEntries(entries)} />
+                    <ComponentSettings settings={state.settings} setSettings={setSettings} />
                     <div>No questions. Check your settings</div>
                 </div>
             );
@@ -361,7 +381,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                 <pre>{window.bundleHash}</pre>
                 <h2>{definition.title}</h2>
                 <p>{definition.description}</p>
-                <definition.settingsComponent {...Object.fromEntries(entries)} />
+                <ComponentSettings settings={state.settings} setSettings={setSettings} />
                 <definition.component question={question} answer={answerer} settings={settings} />
                 <Controls status={state.status} nextQuestion={nextQuestion} />
             </div>
