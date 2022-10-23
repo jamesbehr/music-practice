@@ -5,7 +5,9 @@ import { Keyboard } from './Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from './notes';
 import { quiz, Status, Props, SettingProps } from './Quiz';
 import { shuffle, random, choice } from './random';
-import { useState } from 'react';
+import { useState, Fragment } from 'react';
+import { Listbox, Transition } from '@headlessui/react'
+import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
 
 interface Clef {
     glyph: 'gClef' | 'fClef';
@@ -43,9 +45,14 @@ interface Question {
 
 type MIDIPortsSettingsProps = SettingProps<string> & {
     type: 'inputs' | 'outputs';
+    label: string;
 };
 
-function MIDIPortsSettings({ type, value, onChange }: MIDIPortsSettingsProps) {
+function classNames(...classes: string[]): string {
+    return classes.filter(Boolean).join(' ')
+}
+
+function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsProps) {
     const ports = useMIDIPorts();
 
     switch (ports.status) {
@@ -58,23 +65,65 @@ function MIDIPortsSettings({ type, value, onChange }: MIDIPortsSettingsProps) {
     }
 
     const allPorts = ports[type] as Map<string, WebMidi.MIDIPort>;
+    const selectedPort = allPorts.get(value);
 
     return (
-        <div>
-            {Array.from(allPorts.values()).map((port: WebMidi.MIDIPort) => (
-                <div key={port.id}>
-                    <label>
-                        <input
-                            type="radio"
-                            name={type}
-                            onChange={() => onChange(port.id)}
-                            checked={value === port.id}
-                        />
-                        {port.name}
-                    </label>
-                </div>
-            ))}
-        </div>
+        <Listbox value={value} onChange={onChange}>
+            {({ open }) => (
+                <>
+                    <Listbox.Label className="block text-sm font-medium text-gray-700">{label}</Listbox.Label>
+                    <div className="relative mt-1">
+                        <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
+                            <span className="flex items-center">
+                                <span className="ml-3 block truncate">{selectedPort?.name || "Select a MIDI Device"}</span>
+                            </span>
+                            <span className="pointer-events-none absolute inset-y-0 right-0 ml-3 flex items-center pr-2">
+                                <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
+                            </span>
+                        </Listbox.Button>
+
+                        <Transition
+                            show={open}
+                            as={Fragment}
+                            leave="transition ease-in duration-100"
+                            leaveFrom="opacity-100"
+                            leaveTo="opacity-0"
+                        >
+                            <Listbox.Options className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
+                                {Array.from(allPorts.values()).map((port: WebMidi.MIDIPort) => (
+                                    <Listbox.Option
+                                        key={port.id}
+                                        className={({ active }) => classNames(active ? 'text-white bg-indigo-600' : 'text-gray-900', 'relative cursor-default select-none py-2 pl-3 pr-9')}
+                                        value={port.id}>
+                                        {({ selected, active }) => (
+                                            <>
+                                                <div className="flex items-center">
+                                                    <span className={classNames(selected ? 'font-semibold' : 'font-normal', 'ml-3 block truncate')}>
+                                                        {port.name}
+                                                    </span>
+                                                </div>
+
+                                                {selected ? (
+                                                    <span
+                                                        className={classNames(
+                                                            active ? 'text-white' : 'text-indigo-600',
+                                                            'absolute inset-y-0 right-0 flex items-center pr-4'
+                                                        )}
+                                                    >
+                                                        <CheckIcon className="h-5 w-5" aria-hidden="true" />
+                                                    </span>
+                                                ) : null}
+                                            </>
+                                        )}
+                                    </Listbox.Option>
+                                ))}
+                            </Listbox.Options>
+                        </Transition>
+                    </div>
+                </>
+            )
+            }
+        </Listbox >
     );
 }
 
@@ -233,10 +282,8 @@ const Quiz = quiz<Question, number[], Settings>({
     settingsComponent({ clefs, midiInputId, midiOutputId }) {
         return (
             <div>
-                <h2>MIDI Input</h2>
-                <MIDIPortsSettings {...midiInputId} type="inputs" />
-                <h2>MIDI Output</h2>
-                <MIDIPortsSettings {...midiOutputId} type="outputs" />
+                <MIDIPortsSettings {...midiInputId} type="inputs" label="MIDI Input" />
+                <MIDIPortsSettings {...midiOutputId} type="outputs" label="MIDI Output" />
                 <h2>Clefs</h2>
                 {
                     clefNames.map((clefName) => {
