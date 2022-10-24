@@ -396,9 +396,7 @@ export const Intervals = quiz<Question, number[], Settings>({
             return [];
         }
 
-        shuffle(intervals);
-
-        return intervals.map((interval) => {
+        return shuffle(intervals).map((interval) => {
             const clefName = choice(filtered);
             const clef = clefs[clefName];
 
