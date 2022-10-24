@@ -1,7 +1,7 @@
 import './App.css';
 import { Intervals } from './exercises/Intervals';
 import { ReadingNotes } from './exercises/ReadingNotes';
-import { BrowserRouter, Routes, Route, Outlet, NavLink } from 'react-router-dom';
+import { HashRouter, Routes, Route, Outlet, NavLink } from 'react-router-dom';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { CAGED } from './exercises/CAGED';
 
@@ -72,9 +72,9 @@ function Layout() {
 
 function App() {
     return (
-        <BrowserRouter>
+        <HashRouter>
             <Routes>
-                <Route path="/music-practice" element={<Layout />}>
+                <Route path="/" element={<Layout />}>
                     <Route index element={<Home />} />
                     <Route path="ear-training/melodic-intervals" element={<Intervals />} />
                     <Route path="fretboard/notes" element={<ReadingNotes />} />
@@ -82,7 +82,7 @@ function App() {
                     <Route path="*" element={<NoSuchExercise />} />
                 </Route>
             </Routes>
-        </BrowserRouter>
+        </HashRouter>
     );
 }
 
