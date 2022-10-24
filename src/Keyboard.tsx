@@ -1,4 +1,5 @@
 import { useCallback } from 'react';
+import { classNames } from './classNames';
 import { useMIDIOutput, useMIDIInput, MIDIEvent, MIDIEventType, noteOn, noteOff } from './midi';
 import { isKeyBlack } from './notes';
 
@@ -11,9 +12,10 @@ interface KeyboardProps {
     onKeyUp?: (note: number) => void;
     outputId: string;
     inputId: string;
+    highlightedNotes?: { [note: number]: string };
 };
 
-export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 25, keyHeight = 120 }: KeyboardProps) {
+export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 25, keyHeight = 120, highlightedNotes = {} }: KeyboardProps) {
     const handler = useCallback((event: MIDIEvent) => {
         if (event.type === MIDIEventType.NoteOff) {
             if (onKeyUp) {
@@ -63,9 +65,11 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
         const note = lowestMidiNote + i - startKey;
 
         if (isKeyBlack(note)) {
+            const highlight = highlightedNotes[note] || 'fill-slate-900 hover:fill-slate-700';
+
             blackKeys.push(
                 <rect
-                    className="transition ease-in duration-100 fill-slate-900 stroke-slate-900 hover:fill-slate-700"
+                    className={classNames(highlight, "transition ease-in duration-100 stroke-slate-900")}
                     key={i}
                     x={x - blackWidth / 2}
                     y={0}
@@ -76,9 +80,11 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
                 />
             );
         } else {
+            const highlight = highlightedNotes[note] || 'fill-white hover:fill-slate-200';
+
             whiteKeys.push(
                 <rect
-                    className="transition ease-in duration-100 fill-white stroke-slate-900 hover:fill-slate-200"
+                    className={classNames(highlight, "transition ease-in duration-100 stroke-slate-900")}
                     key={i}
                     x={x}
                     y={0}

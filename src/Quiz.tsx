@@ -39,12 +39,14 @@ interface State<Q, A, T> {
     history: HistoryEntry<Q, A>[];
 }
 
-type Mutator<A> = (current: A) => A;
+type UpdateAnswer<A> = (current: A) => A;
 
 export interface Props<Q, A, T> {
-    question: Q
-    answer(mutator: Mutator<A>): void
-    settings: T,
+    question: Q;
+    answer: A;
+    updateAnswer(mutator: UpdateAnswer<A>): void;
+    settings: T;
+    status: Status;
 }
 
 export type SettingProps<P> = {
@@ -106,7 +108,7 @@ interface StartAction {
 
 interface AnswerAction<A> {
     type: 'answer';
-    mutator: Mutator<A>
+    updater: UpdateAnswer<A>
     timestamp: Date;
 }
 
@@ -261,7 +263,7 @@ function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                     status: Status.Unanswered,
                 };
             case 'answer':
-                const answer = action.mutator(state.answers[state.index]);
+                const answer = action.updater(state.answers[state.index]);
                 const question = state.questions[state.index];
                 const status = definition.determineQuestionStatus(question, answer, state.settings);
                 const answers = [
@@ -358,11 +360,11 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
     function Component() {
         const [state, dispatch] = useReducer(reducer, initialState);
 
-        function answerer(mutator: Mutator<A>) {
+        function updateAnswer(updater: UpdateAnswer<A>) {
             dispatch({
                 type: 'answer',
                 timestamp: new Date(),
-                mutator,
+                updater,
             })
         }
 
@@ -411,7 +413,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
         return (
             <div>
                 <Container settings={state.settings} setSettings={setSettings}>
-                    <definition.component question={question} answer={answerer} settings={settings} />
+                    <definition.component answer={answer} question={question} updateAnswer={updateAnswer} settings={settings} status={state.status} />
                     <Controls status={state.status} nextQuestion={nextQuestion} />
                 </Container>
             </div>
