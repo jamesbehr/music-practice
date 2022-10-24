@@ -3,6 +3,7 @@ import { Intervals } from './exercises/Intervals';
 import { ReadingNotes } from './exercises/ReadingNotes';
 import { BrowserRouter, Routes, Route, Outlet, NavLink } from 'react-router-dom';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
+import { CAGED } from './exercises/CAGED';
 
 function Home() {
     return <div>Select an exercise</div>;
@@ -77,6 +78,7 @@ function App() {
                     <Route index element={<Home />} />
                     <Route path="ear-training/melodic-intervals" element={<Intervals />} />
                     <Route path="fretboard/notes" element={<ReadingNotes />} />
+                    <Route path="fretboard/scales" element={<CAGED />} />
                     <Route path="*" element={<NoSuchExercise />} />
                 </Route>
             </Routes>

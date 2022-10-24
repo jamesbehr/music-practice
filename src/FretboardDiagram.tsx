@@ -1,4 +1,18 @@
-export function FretboardDiagram() {
+export interface Symbol {
+    string: number;
+    fret: number;
+    label: string;
+    textClassName: string;
+    className: string;
+}
+
+interface FretboardDiagramProps {
+    symbols: Symbol[];
+    lowestFret: number;
+    highestFret: number;
+}
+
+export function FretboardDiagram({ symbols, lowestFret, highestFret }: FretboardDiagramProps) {
     const stringSpacing = 30;
     const fretSpacing = 50;
     const strings = [0.01, 0.013, 0.017, 0.026, 0.036, 0.046]; // guage
@@ -8,8 +22,6 @@ export function FretboardDiagram() {
     const height = strings.length * stringSpacing - stringSpacing + lastThickness / 2;
     const nutThickness = 6;
     const fretThickness = 1;
-    const lowestFret = 0;
-    const highestFret = 12;
 
     for (let i = lowestFret; i < highestFret; i++) {
         frets.push(i ? fretThickness : nutThickness);
@@ -17,24 +29,6 @@ export function FretboardDiagram() {
 
     const stringLength = frets.length * fretSpacing;
     const symbolRadius = 10;
-
-    const symbols = [
-        {
-            string: 0, // high e
-            fret: 0, // open
-            label: 'A',
-            textClassName: 'fill-indigo-50',
-            className: 'fill-indigo-500',
-        },
-        {
-            string: 5, // low e
-            fret: 2,
-            label: 'A',
-            textClassName: 'fill-lime-50',
-            className: 'fill-lime-500',
-        },
-    ];
-
     const fretNumbers = [0, 3, 5, 7, 9];
 
     return (
