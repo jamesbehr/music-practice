@@ -13,7 +13,7 @@ interface KeyboardProps {
     inputId: string;
 };
 
-export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 20, keyHeight = 100 }: KeyboardProps) {
+export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 25, keyHeight = 120 }: KeyboardProps) {
     const handler = useCallback((event: MIDIEvent) => {
         if (event.type === MIDIEventType.NoteOff) {
             if (onKeyUp) {
@@ -65,7 +65,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
         if (isKeyBlack(note)) {
             blackKeys.push(
                 <rect
-                    className="transition ease-in duration-100 fill-black stroke-black hover:fill-indigo-900"
+                    className="transition ease-in duration-100 fill-slate-900 stroke-slate-900 hover:fill-slate-700"
                     key={i}
                     x={x - blackWidth / 2}
                     y={0}
@@ -78,7 +78,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
         } else {
             whiteKeys.push(
                 <rect
-                    className="transition ease-in duration-100 fill-white stroke-black hover:fill-indigo-200"
+                    className="transition ease-in duration-100 fill-white stroke-slate-900 hover:fill-slate-200"
                     key={i}
                     x={x}
                     y={0}

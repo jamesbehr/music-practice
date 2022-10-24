@@ -1,7 +1,7 @@
 import React, { useReducer } from 'react';
 import { assert } from './util';
 import { Popover } from '@headlessui/react';
-import { Cog6ToothIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, ChevronRightIcon, Cog6ToothIcon, ExclamationTriangleIcon, PlayIcon, XMarkIcon } from '@heroicons/react/24/outline';
 
 export enum Status {
     Unanswered,
@@ -127,24 +127,41 @@ function statusFinished(status: Status): boolean {
     return status === Status.Correct || status === Status.Incorrect;
 }
 
-function statusMessage(status: Status): string {
+function Banner({ status }: { status: Status }) {
     switch (status) {
         case Status.Correct:
-            return 'Correct!';
+            return (
+                <div className="flex items-center justify-center border-2 border-dashed border-lime-100 text-lime-900 py-2 my-4 font-bold rounded-md">
+                    <CheckIcon className="w-5 h-5" />
+                    Correct!
+                </div>
+            );
         case Status.Incorrect:
-            return 'Wrong!';
-        default:
-            return '';
+            return (
+                <div className="flex items-center justify-center border-2 border-dashed border-rose-100 text-rose-900 py-2 my-4 font-bold rounded-md">
+                    <XMarkIcon className="w-5 h-5 mr-2" />
+                    Incorrect!
+                </div>
+            );
     }
+
+    return <div></div>;
 }
 
 function Controls({ status, nextQuestion }: ControlsProps) {
-    return (
-        <div>
-            <div>{statusMessage(status)}</div>
-            <div>{statusFinished(status) && <button onClick={nextQuestion}>Next question</button>}</div>
-        </div>
-    );
+    if (statusFinished(status)) {
+        return (
+            <div>
+                <Banner status={status} />
+                <button onClick={nextQuestion} className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center">
+                    Next question
+                    <ChevronRightIcon className="h-5 w-5 ml-2.5" />
+                </button>
+            </div>
+        );
+    }
+
+    return <div></div>;
 }
 
 function generate<Q, A, T extends object>(definition: Definition<Q, A, T>, settings: T) {
@@ -293,16 +310,17 @@ function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
     };
 }
 
-interface ComponentSettingsProps<T> {
+interface ContainerProps<T> {
     settings: T;
     setSettings: (newSettings: T) => void;
+    children: JSX.Element[] | JSX.Element;
 }
 
 export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
     const initialState = buildInitialState(definition);
     const reducer = storeState(definition, buildReducer(definition));
 
-    function ComponentSettings({ settings, setSettings }: ComponentSettingsProps<T>) {
+    function Container({ children, settings, setSettings }: ContainerProps<T>) {
         const entries = Object.entries(settings).map(([key, value]) => {
             function onChange(newValue: typeof value) {
                 setSettings({
@@ -315,14 +333,25 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
         });
 
         return (
-            <Popover className="relative">
-                <Popover.Button>
-                    <Cog6ToothIcon className="h-5 w-5" aria-hidden="true" />
-                </Popover.Button>
-                <Popover.Panel className="absolute z-10 shadow sm:overflow-hidden sm:rounded-md p-6 bg-white">
-                    <definition.settingsComponent {...Object.fromEntries(entries)} />
-                </Popover.Panel>
-            </Popover>
+            <div>
+                <div className="flex flex-row items-center justify-between">
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
+                        {definition.title}
+                    </h2>
+                    <Popover>
+                        <Popover.Button className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 p-2 rounded-md" aria-hidden="true" >
+                            <Cog6ToothIcon className="h-5 w-5" />
+                        </Popover.Button>
+                        <Popover.Panel className="absolute z-10 shadow sm:overflow-hidden sm:rounded-md p-6 bg-white">
+                            <definition.settingsComponent {...Object.fromEntries(entries)} />
+                        </Popover.Panel>
+                    </Popover>
+                </div>
+                <p className="mt-2 text-lg text-slate-700">{definition.description}</p>
+                <div className="mt-6">
+                    {children}
+                </div>
+            </div >
         )
     }
 
@@ -353,12 +382,12 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
 
         if (!state.started) {
             return (
-                <div>
-                    <h2>{definition.title}</h2>
-                    <p>{definition.description}</p>
-                    <ComponentSettings settings={state.settings} setSettings={setSettings} />
-                    <button onClick={start}>Start</button>
-                </div>
+                <Container settings={state.settings} setSettings={setSettings}>
+                    <button onClick={start} className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center">
+                        <PlayIcon className="h-5 w-5 mr-2.5" />
+                        Start
+                    </button>
+                </Container >
             );
         }
 
@@ -367,23 +396,24 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
 
         if (!question || !answer) {
             return (
-                <div>
-                    <h2>{definition.title}</h2>
-                    <p>{definition.description}</p>
-                    <ComponentSettings settings={state.settings} setSettings={setSettings} />
-                    <div>No questions. Check your settings</div>
-                </div>
+                <Container settings={state.settings} setSettings={setSettings}>
+                    <div className="flex flex-col items-center">
+                        <ExclamationTriangleIcon className="h-12 w-12 text-slate-500 mb-4" />
+                        <p className="text-slate-900 text-lg">
+                            No questions could be generated. Check the
+                            exercise's settings.
+                        </p>
+                    </div>
+                </Container >
             );
         }
 
         return (
             <div>
-                <pre>{window.bundleHash}</pre>
-                <h2>{definition.title}</h2>
-                <p>{definition.description}</p>
-                <ComponentSettings settings={state.settings} setSettings={setSettings} />
-                <definition.component question={question} answer={answerer} settings={settings} />
-                <Controls status={state.status} nextQuestion={nextQuestion} />
+                <Container settings={state.settings} setSettings={setSettings}>
+                    <definition.component question={question} answer={answerer} settings={settings} />
+                    <Controls status={state.status} nextQuestion={nextQuestion} />
+                </Container>
             </div>
         );
     }

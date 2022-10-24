@@ -7,7 +7,7 @@ import { quiz, Status, Props, SettingProps } from './Quiz';
 import { shuffle, random, choice } from './random';
 import { useState, Fragment } from 'react';
 import { Listbox, Transition } from '@headlessui/react'
-import { CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
+import { ArrowPathIcon, CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
 import { setTimeout } from 'timers/promises';
 
 interface Clef {
@@ -242,7 +242,7 @@ function QuestionDisplay({ question, answer, settings }: Props<Question, number[
     }
 
     return (
-        <div>
+        <div className="flex flex-col items-center">
             <SingleNote
                 accidentalGlyph={isKeyBlack(note) ? accidental : undefined}
                 note={clef.line * 2 - staffLine}
@@ -251,8 +251,11 @@ function QuestionDisplay({ question, answer, settings }: Props<Question, number[
                 clefLine={clef.line}
             />
 
-            <div>
-                <button onClick={playNote}>Play again</button>
+            <div className="my-4">
+                <button onClick={playNote} className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center">
+                    <ArrowPathIcon className="h-5 w-5 mr-2.5" />
+                    Play again
+                </button>
             </div>
 
             <Keyboard
@@ -273,8 +276,8 @@ const intervals = [
 
 
 const Quiz = quiz<Question, number[], Settings>({
-    id: 'interval-recognition',
-    title: 'Interval recognition',
+    id: 'melodic-intervals',
+    title: 'Melodic intervals',
     description: 'Two notes will be played sequentially, with the first note shown on the staff below. Using the configured MIDI input device or the on-screen piano, play both notes.',
     component: QuestionDisplay,
     settings: {
@@ -377,9 +380,51 @@ const Quiz = quiz<Question, number[], Settings>({
 
 function App() {
     return (
-        <div className="App">
-            <Quiz />
-        </div>
+        <div className="flex flex-row max-w-6xl mx-auto py-8">
+            <nav className="w-80 overflow-y-auto">
+                <ol>
+                    <li className="mb-4">
+                        <h5 className="mb-2 font-semibold text-slate-900 dark:text-slate-200">Ear training</h5>
+                        <ol className="border-l border-slate-100 space-y-2">
+                            <li className="text-indigo-500 border-indigo-500 -ml-px border-l pl-4">
+                                <a href="#">Melodic intervals</a>
+                            </li>
+                            <li className="text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900">
+                                <a href="#">Harmonic intervals</a>
+                            </li>
+                        </ol>
+                    </li>
+                    <li className="mb-4">
+                        <h5 className="mb-2 font-semibold text-slate-900 dark:text-slate-200">Theory</h5>
+                        <ol className="border-l border-slate-100 space-y-2">
+                            <li className="text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900">
+                                <a href="#">Circle of fifths</a>
+                            </li>
+                            <li className="text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900">
+                                <a href="#">Triads</a>
+                            </li>
+                        </ol>
+                    </li>
+                    <li className="mb-4">
+                        <h5 className="mb-2 font-semibold text-slate-900 dark:text-slate-200">Fretboard</h5>
+                        <ol className="border-l border-slate-100 space-y-2">
+                            <li className="text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900">
+                                <a href="#">Reading notes</a>
+                            </li>
+                            <li className="text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900">
+                                <a href="#">Scales</a>
+                            </li>
+                            <li className="text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900">
+                                <a href="#">Diatonic triads</a>
+                            </li>
+                        </ol>
+                    </li>
+                </ol>
+            </nav>
+            <div className="px-4">
+                <Quiz />
+            </div>
+        </div >
     );
 }
 
