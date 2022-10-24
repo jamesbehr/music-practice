@@ -1,14 +1,21 @@
 import React, { useReducer } from 'react';
 import { assert } from './util';
 import { Popover } from '@headlessui/react';
-import { CheckIcon, ChevronRightIcon, Cog6ToothIcon, ExclamationTriangleIcon, PlayIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import {
+    CheckIcon,
+    ChevronRightIcon,
+    Cog6ToothIcon,
+    ExclamationTriangleIcon,
+    PlayIcon,
+    XMarkIcon,
+} from '@heroicons/react/24/outline';
 
 export enum Status {
     Unanswered,
     PartiallyAnswered,
     Incorrect,
     Correct,
-};
+}
 
 interface HistoryEntry<Q, A> {
     version: string;
@@ -52,7 +59,7 @@ export interface Props<Q, A, T> {
 export type SettingProps<P> = {
     value: P;
     onChange: (value: P) => void;
-}
+};
 
 export type SettingsProps<T> = {
     [P in keyof T]-?: SettingProps<T[P]>;
@@ -108,7 +115,7 @@ interface StartAction {
 
 interface AnswerAction<A> {
     type: 'answer';
-    updater: UpdateAnswer<A>
+    updater: UpdateAnswer<A>;
     timestamp: Date;
 }
 
@@ -155,7 +162,10 @@ function Controls({ status, nextQuestion }: ControlsProps) {
         return (
             <div>
                 <Banner status={status} />
-                <button onClick={nextQuestion} className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center">
+                <button
+                    onClick={nextQuestion}
+                    className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center"
+                >
                     Next question
                     <ChevronRightIcon className="h-5 w-5 ml-2.5" />
                 </button>
@@ -180,7 +190,7 @@ declare global {
     interface Window {
         // This field is added during Webpack HTML compilation and contains a
         // hash of the bundle
-        bundleHash: string
+        bundleHash: string;
     }
 }
 
@@ -226,8 +236,11 @@ function buildInitialState<Q, A, T extends object>(definition: Definition<Q, A, 
 type Reducer<Q, A, T> = (state: State<Q, A, T>, action: Action<A, T>) => State<Q, A, T>;
 
 // Wraps a reducer so that it perists its state to localStorage
-function storeState<Q, A, T extends object>(definition: Definition<Q, A, T>, reducer: Reducer<Q, A, T>): Reducer<Q, A, T> {
-    return function(state: State<Q, A, T>, action: Action<A, T>) {
+function storeState<Q, A, T extends object>(
+    definition: Definition<Q, A, T>,
+    reducer: Reducer<Q, A, T>,
+): Reducer<Q, A, T> {
+    return function (state: State<Q, A, T>, action: Action<A, T>) {
         const nextState = reducer(state, action);
         const storedState: StoredState<State<Q, A, T>> = {
             state: nextState,
@@ -237,7 +250,7 @@ function storeState<Q, A, T extends object>(definition: Definition<Q, A, T>, red
         const serializedState = JSON.stringify(storedState);
         window.localStorage.setItem(definitionKey(definition), serializedState);
         return nextState;
-    }
+    };
 }
 
 function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
@@ -288,7 +301,7 @@ function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                                 startTime: state.startTime,
                                 endTime: action.timestamp,
                                 status,
-                            }
+                            },
                         ],
                     };
                 }
@@ -303,7 +316,7 @@ function buildReducer<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                     settings: action.values,
                     questions,
                     answers,
-                    index: 0
+                    index: 0,
                 };
             }
             default:
@@ -337,11 +350,12 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
         return (
             <div>
                 <div className="flex flex-row items-center justify-between">
-                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-                        {definition.title}
-                    </h2>
+                    <h2 className="text-2xl font-extrabold text-slate-900 tracking-tight">{definition.title}</h2>
                     <Popover>
-                        <Popover.Button className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 p-2 rounded-md" aria-hidden="true" >
+                        <Popover.Button
+                            className="text-slate-700 hover:text-slate-900 hover:bg-slate-100 p-2 rounded-md"
+                            aria-hidden="true"
+                        >
                             <Cog6ToothIcon className="h-5 w-5" />
                         </Popover.Button>
                         <Popover.Panel className="absolute z-10 shadow sm:overflow-hidden sm:rounded-md p-6 bg-white">
@@ -350,11 +364,9 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                     </Popover>
                 </div>
                 <p className="mt-2 text-lg text-slate-700">{definition.description}</p>
-                <div className="mt-6">
-                    {children}
-                </div>
-            </div >
-        )
+                <div className="mt-6">{children}</div>
+            </div>
+        );
     }
 
     function Component() {
@@ -365,7 +377,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                 type: 'answer',
                 timestamp: new Date(),
                 updater,
-            })
+            });
         }
 
         function nextQuestion() {
@@ -385,11 +397,14 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
         if (!state.started) {
             return (
                 <Container settings={state.settings} setSettings={setSettings}>
-                    <button onClick={start} className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center">
+                    <button
+                        onClick={start}
+                        className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center"
+                    >
                         <PlayIcon className="h-5 w-5 mr-2.5" />
                         Start
                     </button>
-                </Container >
+                </Container>
             );
         }
 
@@ -402,18 +417,23 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                     <div className="flex flex-col items-center">
                         <ExclamationTriangleIcon className="h-12 w-12 text-slate-500 mb-4" />
                         <p className="text-slate-900 text-lg">
-                            No questions could be generated. Check the
-                            exercise's settings.
+                            No questions could be generated. Check the exercise's settings.
                         </p>
                     </div>
-                </Container >
+                </Container>
             );
         }
 
         return (
             <div>
                 <Container settings={state.settings} setSettings={setSettings}>
-                    <definition.component answer={answer} question={question} updateAnswer={updateAnswer} settings={settings} status={state.status} />
+                    <definition.component
+                        answer={answer}
+                        question={question}
+                        updateAnswer={updateAnswer}
+                        settings={settings}
+                        status={state.status}
+                    />
                     <Controls status={state.status} nextQuestion={nextQuestion} />
                 </Container>
             </div>
@@ -422,7 +442,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
 
     const wrappedName = definition.component.displayName || definition.component.name || 'Component';
 
-    Component.displayName = `quiz(${wrappedName})`
+    Component.displayName = `quiz(${wrappedName})`;
 
     return Component;
 }

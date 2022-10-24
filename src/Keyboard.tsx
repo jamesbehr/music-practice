@@ -13,20 +13,33 @@ interface KeyboardProps {
     outputId: string;
     inputId: string;
     highlightedNotes?: { [note: number]: string };
-};
+}
 
-export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote, highestMidiNote, keyWidth = 25, keyHeight = 120, highlightedNotes = {} }: KeyboardProps) {
-    const handler = useCallback((event: MIDIEvent) => {
-        if (event.type === MIDIEventType.NoteOff) {
-            if (onKeyUp) {
-                onKeyUp(event.note);
+export function Keyboard({
+    inputId,
+    outputId,
+    onKeyUp,
+    onKeyDown,
+    lowestMidiNote,
+    highestMidiNote,
+    keyWidth = 25,
+    keyHeight = 120,
+    highlightedNotes = {},
+}: KeyboardProps) {
+    const handler = useCallback(
+        (event: MIDIEvent) => {
+            if (event.type === MIDIEventType.NoteOff) {
+                if (onKeyUp) {
+                    onKeyUp(event.note);
+                }
+            } else if (event.type === MIDIEventType.NoteOn) {
+                if (onKeyDown) {
+                    onKeyDown(event.note);
+                }
             }
-        } else if (event.type === MIDIEventType.NoteOn) {
-            if (onKeyDown) {
-                onKeyDown(event.note);
-            }
-        }
-    }, [onKeyUp, onKeyDown]);
+        },
+        [onKeyUp, onKeyDown],
+    );
 
     useMIDIInput(inputId, handler);
     const output = useMIDIOutput(outputId, 1);
@@ -69,7 +82,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
 
             blackKeys.push(
                 <rect
-                    className={classNames(highlight, "transition ease-in duration-100 stroke-slate-900")}
+                    className={classNames(highlight, 'transition ease-in duration-100 stroke-slate-900')}
                     key={i}
                     x={x - blackWidth / 2}
                     y={0}
@@ -77,14 +90,14 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
                     height={blackHeight}
                     onMouseDown={() => keyDown(note)}
                     onMouseUp={() => keyUp(note)}
-                />
+                />,
             );
         } else {
             const highlight = highlightedNotes[note] || 'fill-white hover:fill-slate-200';
 
             whiteKeys.push(
                 <rect
-                    className={classNames(highlight, "transition ease-in duration-100 stroke-slate-900")}
+                    className={classNames(highlight, 'transition ease-in duration-100 stroke-slate-900')}
                     key={i}
                     x={x}
                     y={0}
@@ -92,7 +105,7 @@ export function Keyboard({ inputId, outputId, onKeyUp, onKeyDown, lowestMidiNote
                     height={whiteHeight}
                     onMouseDown={() => keyDown(note)}
                     onMouseUp={() => keyUp(note)}
-                />
+                />,
             );
 
             x += whiteWidth;

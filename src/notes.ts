@@ -30,26 +30,26 @@ const unsharpenMap = [
 
 export function unsharpen(midiNote: number): number {
     const octave = Math.floor(midiNote / 12);
-    return unsharpenMap[midiNote % 12] + octave*7;
+    return unsharpenMap[midiNote % 12] + octave * 7;
 }
 
 export function unflatten(midiNote: number): number {
     const octave = Math.floor(midiNote / 12);
-    return unflattenMap[midiNote % 12] + octave*7;
+    return unflattenMap[midiNote % 12] + octave * 7;
 }
 
 const blackKeyMap = [
     false, // C
-    true,  // C#
+    true, // C#
     false, // D
-    true,  // D#
+    true, // D#
     false, // E
     false, // F
-    true,  // F#
+    true, // F#
     false, // G
-    true,  // G#
+    true, // G#
     false, // A
-    true,  // A#
+    true, // A#
     false, // B
 ];
 

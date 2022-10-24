@@ -24,26 +24,26 @@ interface ProgramChangeMIDIEvent {
     type: MIDIEventType.ProgramChange;
     channel: number;
     program: number;
-};
+}
 
 interface NoteOnMIDIEvent {
     type: MIDIEventType.NoteOn;
     channel: number;
     velocity: number;
     note: number;
-};
+}
 
 interface NoteOffMIDIEvent {
     type: MIDIEventType.NoteOff;
     channel: number;
     velocity: number;
     note: number;
-};
+}
 
 interface EventAt {
     tick: number;
     event: MIDIEvent;
-};
+}
 
 export enum MIDIPortStatus {
     Unitialized,
@@ -59,7 +59,7 @@ interface Ports {
 }
 
 interface DeviceInfo {
-    id: string
+    id: string;
     manufacturer: string;
     name: string;
     state: WebMidi.MIDIPortDeviceState;
@@ -101,7 +101,7 @@ export class RealOutput {
         this.output = output;
         this.notes = new Map();
         this.info = deviceInfoFromPort(output);
-    };
+    }
 
     // TODO: This should be an event that sets the tempo
     setTempo(msPerBeat: number) {
@@ -113,10 +113,12 @@ export class RealOutput {
     }
 
     enqueueTimedEvents(events: EventAt[]) {
-        this.events.push(...events.map(({ tick, event }) => ({
-            tick: this.tick + tick,
-            event,
-        })));
+        this.events.push(
+            ...events.map(({ tick, event }) => ({
+                tick: this.tick + tick,
+                event,
+            })),
+        );
 
         this.events.sort((a, b) => {
             if (a.tick < b.tick) {
@@ -204,7 +206,11 @@ export class RealOutput {
 }
 
 export function useMIDIPorts(): Ports {
-    function state(status: MIDIPortStatus, outputs: WebMidi.MIDIOutputMap = new Map(), inputs: WebMidi.MIDIInputMap = new Map()) {
+    function state(
+        status: MIDIPortStatus,
+        outputs: WebMidi.MIDIOutputMap = new Map(),
+        inputs: WebMidi.MIDIInputMap = new Map(),
+    ) {
         return { status, outputs, inputs };
     }
 
@@ -223,18 +229,20 @@ export function useMIDIPorts(): Ports {
 
         const promise = window.navigator.requestMIDIAccess();
 
-        promise.then((access) => {
-            access.addEventListener('statechange', handleStateChange);
-            setPorts(state(MIDIPortStatus.Success, access.outputs, access.inputs));
-        }).catch(() => {
-            setPorts(state(MIDIPortStatus.PermissionDenied));
-        });
+        promise
+            .then((access) => {
+                access.addEventListener('statechange', handleStateChange);
+                setPorts(state(MIDIPortStatus.Success, access.outputs, access.inputs));
+            })
+            .catch(() => {
+                setPorts(state(MIDIPortStatus.PermissionDenied));
+            });
 
         return function unsubscribe() {
             promise.then((access) => {
                 access.removeEventListener('statechange', handleStateChange);
             });
-        }
+        };
     }, []);
 
     return ports;
@@ -249,12 +257,12 @@ function nullOutput(portId: string) {
             name: '',
             state: 'disconnected',
         } as DeviceInfo,
-        enqueueTimedEvents() { },
-        start() { },
-        stop() { },
-        sendEvent() { },
+        enqueueTimedEvents() {},
+        start() {},
+        stop() {},
+        sendEvent() {},
     };
-};
+}
 
 export function useMIDIOutput(portId: string, ticksPerBeat: number): Output {
     const ports = useMIDIPorts();
@@ -274,7 +282,7 @@ export function useMIDIOutput(portId: string, ticksPerBeat: number): Output {
     }, [ports, portId, wrappedOutput]);
 
     return wrappedOutput;
-};
+}
 
 function parseMIDIEvent(event: WebMidi.MIDIMessageEvent): MIDIEvent | undefined {
     const a = event.data[0];
@@ -316,13 +324,16 @@ function parseMIDIEvent(event: WebMidi.MIDIMessageEvent): MIDIEvent | undefined 
 export function useMIDIInput(portId: string, handler: (e: MIDIEvent) => void) {
     const ports = useMIDIPorts();
 
-    const handleMidiMessage = useCallback((event: Event) => {
-        const midiEvent = event as WebMidi.MIDIMessageEvent;
-        const parsed = parseMIDIEvent(midiEvent);
-        if (parsed) {
-            handler(parsed);
-        }
-    }, [handler]);
+    const handleMidiMessage = useCallback(
+        (event: Event) => {
+            const midiEvent = event as WebMidi.MIDIMessageEvent;
+            const parsed = parseMIDIEvent(midiEvent);
+            if (parsed) {
+                handler(parsed);
+            }
+        },
+        [handler],
+    );
 
     useEffect(() => {
         const input = ports.inputs.get(portId);
@@ -334,7 +345,7 @@ export function useMIDIInput(portId: string, handler: (e: MIDIEvent) => void) {
 
         return function unsubscribe() {
             input.removeEventListener('midimessage', handleMidiMessage);
-        }
+        };
     }, [portId, ports, handleMidiMessage]);
 }
 
@@ -342,13 +353,16 @@ export function useMIDIInput(portId: string, handler: (e: MIDIEvent) => void) {
 export function useAnyMIDIInput(handler: (e: MIDIEvent) => void) {
     const { inputs } = useMIDIPorts();
 
-    const handleMidiMessage = useCallback((event: Event) => {
-        const midiEvent = event as WebMidi.MIDIMessageEvent;
-        const parsed = parseMIDIEvent(midiEvent);
-        if (parsed) {
-            handler(parsed);
-        }
-    }, [handler]);
+    const handleMidiMessage = useCallback(
+        (event: Event) => {
+            const midiEvent = event as WebMidi.MIDIMessageEvent;
+            const parsed = parseMIDIEvent(midiEvent);
+            if (parsed) {
+                handler(parsed);
+            }
+        },
+        [handler],
+    );
 
     useEffect(() => {
         inputs.forEach((input) => {
@@ -359,6 +373,6 @@ export function useAnyMIDIInput(handler: (e: MIDIEvent) => void) {
             inputs.forEach((input) => {
                 input.removeEventListener('midimessage', handleMidiMessage);
             });
-        }
+        };
     }, [inputs, handleMidiMessage]);
 }

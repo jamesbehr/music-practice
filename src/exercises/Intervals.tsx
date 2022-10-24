@@ -1,11 +1,20 @@
-import { timed, noteOn, noteOff, MIDIEventType, MIDIPortStatus, useMIDIPorts, useMIDIOutput, useAnyMIDIInput } from '../midi';
+import {
+    timed,
+    noteOn,
+    noteOff,
+    MIDIEventType,
+    MIDIPortStatus,
+    useMIDIPorts,
+    useMIDIOutput,
+    useAnyMIDIInput,
+} from '../midi';
 import { SingleNote } from '../Notation';
 import { Keyboard } from '../Keyboard';
 import { unsharpen, unflatten, isKeyBlack } from '../notes';
 import { quiz, Status, Props, SettingProps } from '../Quiz';
 import { shuffle, random, choice } from '../random';
 import { useState, Fragment } from 'react';
-import { Listbox, Transition } from '@headlessui/react'
+import { Listbox, Transition } from '@headlessui/react';
 import { ArrowPathIcon, CheckIcon, ChevronUpDownIcon } from '@heroicons/react/24/outline';
 import { classNames } from '../classNames';
 
@@ -41,7 +50,7 @@ interface Question {
 
     // MIDI Program to play the notes through
     program: number;
-};
+}
 
 type MIDIPortsSettingsProps = SettingProps<string> & {
     type: 'inputs' | 'outputs';
@@ -71,7 +80,9 @@ function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsPr
                     <div className="relative mt-1">
                         <Listbox.Button className="relative w-full cursor-default rounded-md border border-gray-300 bg-white py-2 pl-3 pr-10 text-left shadow-sm focus:border-indigo-500 focus:outline-none focus:ring-1 focus:ring-indigo-500 sm:text-sm">
                             <span className="flex items-center">
-                                <span className="ml-3 block truncate">{selectedPort?.name || "Select a MIDI Device"}</span>
+                                <span className="ml-3 block truncate">
+                                    {selectedPort?.name || 'Select a MIDI Device'}
+                                </span>
                             </span>
                             <span className="pointer-events-none absolute inset-y-0 right-0 ml-3 flex items-center pr-2">
                                 <ChevronUpDownIcon className="h-5 w-5 text-gray-400" aria-hidden="true" />
@@ -89,12 +100,23 @@ function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsPr
                                 {Array.from(allPorts.values()).map((port: WebMidi.MIDIPort) => (
                                     <Listbox.Option
                                         key={port.id}
-                                        className={({ active }) => classNames(active ? 'text-white bg-indigo-600' : 'text-gray-900', 'relative cursor-default select-none py-2 pl-3 pr-9')}
-                                        value={port.id}>
+                                        className={({ active }) =>
+                                            classNames(
+                                                active ? 'text-white bg-indigo-600' : 'text-gray-900',
+                                                'relative cursor-default select-none py-2 pl-3 pr-9',
+                                            )
+                                        }
+                                        value={port.id}
+                                    >
                                         {({ selected, active }) => (
                                             <>
                                                 <div className="flex items-center">
-                                                    <span className={classNames(selected ? 'font-semibold' : 'font-normal', 'ml-3 block truncate')}>
+                                                    <span
+                                                        className={classNames(
+                                                            selected ? 'font-semibold' : 'font-normal',
+                                                            'ml-3 block truncate',
+                                                        )}
+                                                    >
                                                         {port.name}
                                                     </span>
                                                 </div>
@@ -103,7 +125,7 @@ function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsPr
                                                     <span
                                                         className={classNames(
                                                             active ? 'text-white' : 'text-indigo-600',
-                                                            'absolute inset-y-0 right-0 flex items-center pr-4'
+                                                            'absolute inset-y-0 right-0 flex items-center pr-4',
                                                         )}
                                                     >
                                                         <CheckIcon className="h-5 w-5" aria-hidden="true" />
@@ -117,16 +139,15 @@ function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsPr
                         </Transition>
                     </div>
                 </>
-            )
-            }
-        </Listbox >
+            )}
+        </Listbox>
     );
 }
 
 interface NoteInputProps {
     value: number;
     onChange: (value: number) => void;
-    label: string
+    label: string;
 }
 
 function NoteInput({ label, value, onChange }: NoteInputProps) {
@@ -161,7 +182,13 @@ function NoteInput({ label, value, onChange }: NoteInputProps) {
                     value={value}
                     onChange={(e) => onChange(parseInt(e.target.value, 10))}
                 />
-                <button className="rounded-r-md border border-l-0 border-gray-300 bg-gray-50 hover:bg-gray-200 disabled:bg-gray-50 px-3 text-sm disabled:text-gray-500" disabled={mapping} onClick={() => map()}>Map note</button>
+                <button
+                    className="rounded-r-md border border-l-0 border-gray-300 bg-gray-50 hover:bg-gray-200 disabled:bg-gray-50 px-3 text-sm disabled:text-gray-500"
+                    disabled={mapping}
+                    onClick={() => map()}
+                >
+                    Map note
+                </button>
             </div>
         </label>
     );
@@ -264,7 +291,10 @@ function QuestionDisplay({ question, answer, updateAnswer, settings, status }: P
             />
 
             <div className="my-4">
-                <button onClick={playNote} className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center">
+                <button
+                    onClick={playNote}
+                    className="px-4 py-2 bg-indigo-500 text-indigo-50 rounded-md hover:bg-indigo-700 inline-flex flex-row items-center"
+                >
                     <ArrowPathIcon className="h-5 w-5 mr-2.5" />
                     Play again
                 </button>
@@ -279,18 +309,16 @@ function QuestionDisplay({ question, answer, updateAnswer, settings, status }: P
                 highlightedNotes={highlightedNotes}
             />
         </div>
-    )
+    );
 }
 
-const intervals = [
-    1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12,
-    -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12
-]; // semitones
+const intervals = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, -1, -2, -3, -4, -5, -6, -7, -8, -9, -10, -11, -12]; // semitones
 
 export const Intervals = quiz<Question, number[], Settings>({
     id: 'melodic-intervals',
     title: 'Melodic intervals',
-    description: 'Two notes will be played sequentially, with the first note shown on the staff below. Using the configured MIDI input device or the on-screen piano, play both notes.',
+    description:
+        'Two notes will be played sequentially, with the first note shown on the staff below. Using the configured MIDI input device or the on-screen piano, play both notes.',
     component: QuestionDisplay,
     settings: {
         midiInputId: '',
@@ -324,21 +352,19 @@ export const Intervals = quiz<Question, number[], Settings>({
                 <MIDIPortsSettings {...midiInputId} type="inputs" label="MIDI Input" />
                 <MIDIPortsSettings {...midiOutputId} type="outputs" label="MIDI Output" />
                 <h2>Clefs</h2>
-                {
-                    clefNames.map((clefName) => {
-                        const value = clefs.value[clefName];
+                {clefNames.map((clefName) => {
+                    const value = clefs.value[clefName];
 
-                        function onChange(newValue: ClefSettings) {
-                            clefs.onChange({
-                                ...clefs.value,
-                                [clefName]: newValue,
-                            });
-                        }
+                    function onChange(newValue: ClefSettings) {
+                        clefs.onChange({
+                            ...clefs.value,
+                            [clefName]: newValue,
+                        });
+                    }
 
-                        return <SingleClefSettings key={clefName} value={value} onChange={onChange} />
-                    })
-                }
-            </div >
+                    return <SingleClefSettings key={clefName} value={value} onChange={onChange} />;
+                })}
+            </div>
         );
     },
     determineQuestionStatus(question, answer) {
@@ -387,6 +413,5 @@ export const Intervals = quiz<Question, number[], Settings>({
                 showAsSharp: choice([true, false]),
             };
         });
-    }
+    },
 });
-

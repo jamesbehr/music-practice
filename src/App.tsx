@@ -4,9 +4,7 @@ import { BrowserRouter, Routes, Route, Outlet, NavLink } from 'react-router-dom'
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 
 function Home() {
-    return (
-        <div>Select an exercise</div>
-    );
+    return <div>Select an exercise</div>;
 }
 
 function NoSuchExercise() {
@@ -21,12 +19,15 @@ function NoSuchExercise() {
 }
 
 function Link({ to, children }: { to: string; children: JSX.Element | string }) {
-    const classNamesActive = "text-indigo-500 border-indigo-500 -ml-px border-l pl-4";
-    const classNames = "text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900";
+    const classNamesActive = 'text-indigo-500 border-indigo-500 -ml-px border-l pl-4';
+    const classNames =
+        'text-slate-700 hover:text-slate-900 border-transparent -ml-px border-l pl-4 hover:border-slate-900';
 
     return (
         <li>
-            <NavLink className={({ isActive }) => isActive ? classNamesActive : classNames} to={to}>{children}</NavLink>
+            <NavLink className={({ isActive }) => (isActive ? classNamesActive : classNames)} to={to}>
+                {children}
+            </NavLink>
         </li>
     );
 }

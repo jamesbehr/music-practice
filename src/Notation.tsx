@@ -37,7 +37,8 @@ function computeLedgerLines(noteLine: number, staffLines: number) {
         const count = -nearestLine;
 
         return { count, start: -count };
-    } if (nearestLine >= staffLines) {
+    }
+    if (nearestLine >= staffLines) {
         return { count: nearestLine - staffLines + 1, start: staffLines };
     }
 
@@ -57,7 +58,7 @@ interface SingleNoteProps {
 interface PositionedGlyph {
     glyph: keyof typeof bravuraMetadata.glyphBBoxes;
     line: number;
-};
+}
 
 function glyphBoundingBox(glyph: keyof typeof bravuraMetadata.glyphBBoxes, glyphLine: number) {
     const { bBoxNE, bBoxSW } = bravuraMetadata.glyphBBoxes[glyph];
@@ -105,9 +106,11 @@ export function SingleNote({ note, clefLine, clefGlyph, noteGlyph, accidentalGly
         <svg className="test" style={{ fontSize }} width={em(staffWidth)} height={em(height)}>
             <g transform={translateY(em(offsetY))}>
                 <g style={lineStyle}>
-                    {Array(staffLines).fill(0).map((_, index) => (
-                        <line key={index} x2={em(staffWidth)} y1={em(index)} y2={em(index)} />
-                    ))}
+                    {Array(staffLines)
+                        .fill(0)
+                        .map((_, index) => (
+                            <line key={index} x2={em(staffWidth)} y1={em(index)} y2={em(index)} />
+                        ))}
                 </g>
 
                 <text y={em(clefLine)}>{glyph(clefGlyph)}</text>
@@ -116,17 +119,21 @@ export function SingleNote({ note, clefLine, clefGlyph, noteGlyph, accidentalGly
                     {accidentalGlyph && <text y={em(noteLine)}>{glyph(accidentalGlyph)}</text>}
 
                     <g style={lineStyle} transform={translateX(em(accidentalWidth + accidentalPadding))}>
-                        {Array(ledgerLines.count).fill(0).map((_, index) => (
-                            <line
-                                key={index}
-                                x2={em(noteWidth)}
-                                y1={em(ledgerLines.start + index)}
-                                y2={em(ledgerLines.start + index)}
-                            />
-                        ))}
+                        {Array(ledgerLines.count)
+                            .fill(0)
+                            .map((_, index) => (
+                                <line
+                                    key={index}
+                                    x2={em(noteWidth)}
+                                    y1={em(ledgerLines.start + index)}
+                                    y2={em(ledgerLines.start + index)}
+                                />
+                            ))}
                     </g>
 
-                    <text x={em(accidentalWidth + accidentalPadding)} y={em(noteLine)}>{glyph("noteWhole")}</text>
+                    <text x={em(accidentalWidth + accidentalPadding)} y={em(noteLine)}>
+                        {glyph('noteWhole')}
+                    </text>
                 </g>
             </g>
         </svg>

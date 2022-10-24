@@ -1,5 +1,6 @@
 @font-face {
-    font-family: 'Bravura'; src: local('Bravura'), url(./smufl/Bravura.woff2) format('woff2');
+    font-family: 'Bravura';
+    src: local('Bravura'), url(./smufl/Bravura.woff2) format('woff2');
 }
 
 .test {
