@@ -21,7 +21,7 @@ interface Question {
 
 type Answer = string[];
 
-const stringNames = ['E', 'B', 'G', 'D', 'A', 'E'];
+const stringNames = ['1st', '2nd', '3rd', '4th', '5th', '6th'];
 
 interface StringProps {
     fretClassNames: { [fret: number]: string };
@@ -45,13 +45,13 @@ function keyToPosition(key: string): Position {
 
 function String({ fretClassNames, name, onSelect, highestFret }: StringProps) {
     return (
-        <div className="flex flex-row items-center">
+        <div className="flex flex-row items-center leading-none">
             <div className="mr-4 text-xs font-bold">{name}</div>
             {Array(highestFret + 1)
                 .fill(0)
                 .map((_, fret) => (
                     <Fragment key={fret}>
-                        {fret > 0 && <span className="w-5 border-b" />}
+                        {fret > 1 && <span className="w-5 border-b" />}
                         <button
                             onClick={() => onSelect(fret)}
                             className={classNames(
@@ -61,6 +61,9 @@ function String({ fretClassNames, name, onSelect, highestFret }: StringProps) {
                         >
                             {fret}
                         </button>
+                        {fret == 0 && <span className="w-2.5 border-b" />}
+                        {fret == 0 && <span className="h-7 border-l-4 border-slate-500" />}
+                        {fret == 0 && <span className="w-2.5 border-b" />}
                     </Fragment>
                 ))}
         </div>
@@ -89,7 +92,7 @@ function QuestionDisplay({ answer, updateAnswer, question, status, settings }: P
             <p className="text-slate-700 text-lg mb-4">
                 Where is <span className="font-bold">{question.noteName}</span>?
             </p>
-            <div className="flex flex-col space-y-2">
+            <div className="flex flex-col">
                 {strings.flatMap((n) => {
                     const classNames: { [fret: number]: string } = {};
 
@@ -172,7 +175,7 @@ const strings = [3, 4, 5]; // only do the bottom 3 strings
 export const ReadingNotes = quiz<Question, Answer, Settings>({
     id: 'reading-notes',
     title: 'Naming notes on the fretboard',
-    description: 'Find all the places a note exists on the given strings.',
+    description: 'Find all the places a note exists on the given strings (standard tuning).',
     component: QuestionDisplay,
     settings: {
         highestFret: 12,
