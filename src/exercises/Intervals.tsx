@@ -1,12 +1,12 @@
 import {
-    timed,
     noteOn,
     noteOff,
+    MIDIEvent,
     MIDIEventType,
-    MIDIPortStatus,
     useMIDIPorts,
     useMIDIOutput,
     useAnyMIDIInput,
+    useTimer,
 } from '../midi';
 import { SingleNote } from '../Notation';
 import { Keyboard } from '../Keyboard';
@@ -53,24 +53,24 @@ interface Question {
 }
 
 type MIDIPortsSettingsProps = SettingProps<string> & {
-    type: 'inputs' | 'outputs';
+    type: 'input' | 'output';
     label: string;
 };
 
 function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsProps) {
-    const ports = useMIDIPorts();
+    const { ports, status } = useMIDIPorts();
 
-    switch (ports.status) {
-        case MIDIPortStatus.Unitialized:
+    switch (status) {
+        case 'uninitialized':
             return <div>Loading...</div>;
-        case MIDIPortStatus.Unsupported:
+        case 'unsupported':
             return <div>Your browser does not support the Web MIDI API</div>;
-        case MIDIPortStatus.PermissionDenied:
+        case 'permission-denied':
             return <div>Please allow this site to use MIDI</div>;
     }
 
-    const allPorts = ports[type] as Map<string, WebMidi.MIDIPort>;
-    const selectedPort = allPorts.get(value);
+    const allPorts = ports.filter((port) => port.type === type);
+    const selectedPort = allPorts.find((port) => port.id === value);
 
     return (
         <Listbox value={value} onChange={onChange}>
@@ -97,7 +97,7 @@ function MIDIPortsSettings({ label, type, value, onChange }: MIDIPortsSettingsPr
                             leaveTo="opacity-0"
                         >
                             <Listbox.Options className="absolute z-10 mt-1 max-h-56 w-full overflow-auto rounded-md bg-white py-1 text-base shadow-lg ring-1 ring-black ring-opacity-5 focus:outline-none sm:text-sm">
-                                {Array.from(allPorts.values()).map((port: WebMidi.MIDIPort) => (
+                                {allPorts.map((port) => (
                                     <Listbox.Option
                                         key={port.id}
                                         className={({ active }) =>
@@ -240,10 +240,13 @@ function QuestionDisplay({ question, answer, updateAnswer, settings, status }: P
     const staffLine = unalter(note) - unalter(clef.midiNote);
     const accidental = showAsSharp ? 'accidentalSharp' : 'accidentalFlat';
 
-    const output = useMIDIOutput(settings.midiOutputId, 1);
+    const { sendEvent } = useMIDIOutput(settings.midiOutputId);
+    const { enqueue } = useTimer(1, 120, (event: MIDIEvent) => {
+        sendEvent(event);
+    });
 
     function playNote() {
-        output.enqueueTimedEvents([
+        enqueue([
             {
                 tick: 0,
                 event: {
@@ -252,10 +255,10 @@ function QuestionDisplay({ question, answer, updateAnswer, settings, status }: P
                     program: question.program,
                 },
             },
-            timed(0, noteOn(note)),
-            timed(1, noteOff(note)),
-            timed(1, noteOn(nextNote)),
-            timed(2, noteOff(nextNote)),
+            { tick: 0, event: noteOn(note) },
+            { tick: 1, event: noteOff(note) },
+            { tick: 1, event: noteOn(nextNote) },
+            { tick: 2, event: noteOff(nextNote) },
         ]);
     }
 
@@ -349,8 +352,8 @@ export const Intervals = quiz<Question, number[], Settings>({
     settingsComponent({ clefs, midiInputId, midiOutputId }) {
         return (
             <div>
-                <MIDIPortsSettings {...midiInputId} type="inputs" label="MIDI Input" />
-                <MIDIPortsSettings {...midiOutputId} type="outputs" label="MIDI Output" />
+                <MIDIPortsSettings {...midiInputId} type="input" label="MIDI Input" />
+                <MIDIPortsSettings {...midiOutputId} type="output" label="MIDI Output" />
                 <h2>Clefs</h2>
                 {clefNames.map((clefName) => {
                     const value = clefs.value[clefName];

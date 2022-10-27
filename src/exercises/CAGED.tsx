@@ -2,9 +2,9 @@ import { quiz, Status, Props } from '../Quiz';
 import { shuffle } from '../random';
 import { FretboardDiagram, Symbol } from '../FretboardDiagram';
 
-interface Settings { }
+interface Settings {}
 
-interface Question { }
+interface Question {}
 
 type Answer = string[];
 
@@ -145,13 +145,12 @@ function buildShapes(firstFret: number): Shape[] {
 }
 
 function CheckedItem({ children }: { children: React.ReactNode }) {
-
     return (
         <li>
             <input type="checkbox" />
             {children}
         </li>
-    )
+    );
 }
 
 function QuestionDisplay(_: Props<Question, Answer, Settings>) {

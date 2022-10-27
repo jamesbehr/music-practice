@@ -42,21 +42,21 @@ export function Keyboard({
     );
 
     useMIDIInput(inputId, handler);
-    const output = useMIDIOutput(outputId, 1);
+    const { sendEvent } = useMIDIOutput(outputId);
 
     if (lowestMidiNote >= highestMidiNote) {
         throw new Error('lowestMidiNote must be < highestMidiNote');
     }
 
     function keyDown(note: number) {
-        output.sendEvent(noteOn(note));
+        sendEvent(noteOn(note));
         if (onKeyDown) {
             onKeyDown(note);
         }
     }
 
     function keyUp(note: number) {
-        output.sendEvent(noteOff(note));
+        sendEvent(noteOff(note));
         if (onKeyUp) {
             onKeyUp(note);
         }
