@@ -4,6 +4,7 @@ import { ReadingNotes } from './exercises/ReadingNotes';
 import { HashRouter, Routes, Route, Outlet, NavLink } from 'react-router-dom';
 import { QuestionMarkCircleIcon } from '@heroicons/react/24/outline';
 import { CAGED } from './exercises/CAGED';
+import { NameScaleDegrees } from './exercises/NameScaleDegrees';
 
 function Home() {
     return <div>Select an exercise</div>;
@@ -49,8 +50,7 @@ function Layout() {
                     <li className="mb-4">
                         <h5 className="mb-2 font-semibold text-slate-900 dark:text-slate-200">Theory</h5>
                         <ol className="border-l border-slate-100 space-y-2">
-                            <Link to="theory/circle-of-fifths">Circle of fifths</Link>
-                            <Link to="theory/triads">Triads</Link>
+                            <Link to="theory/scale-notes">Scales</Link>
                         </ol>
                     </li>
                     <li className="mb-4">
@@ -77,6 +77,7 @@ function App() {
                 <Route path="/" element={<Layout />}>
                     <Route index element={<Home />} />
                     <Route path="ear-training/melodic-intervals" element={<Intervals />} />
+                    <Route path="theory/scale-notes" element={<NameScaleDegrees />} />
                     <Route path="fretboard/notes" element={<ReadingNotes />} />
                     <Route path="fretboard/scales" element={<CAGED />} />
                     <Route path="*" element={<NoSuchExercise />} />

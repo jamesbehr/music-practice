@@ -408,10 +408,7 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
             );
         }
 
-        const question = state.questions[state.index];
-        const answer = state.answers[state.index];
-
-        if (!question || !answer) {
+        if (!state.questions.length || !state.answers.length) {
             return (
                 <Container settings={state.settings} setSettings={setSettings}>
                     <div className="flex flex-col items-center">
@@ -423,6 +420,9 @@ export function quiz<Q, A, T extends object>(definition: Definition<Q, A, T>) {
                 </Container>
             );
         }
+
+        const question = state.questions[state.index];
+        const answer = state.answers[state.index];
 
         return (
             <div>
