@@ -61,9 +61,9 @@ function String({ fretClassNames, name, onSelect, highestFret }: StringProps) {
                         >
                             {fret}
                         </button>
-                        {fret == 0 && <span className="w-2.5 border-b" />}
-                        {fret == 0 && <span className="h-7 border-l-4 border-slate-500" />}
-                        {fret == 0 && <span className="w-2.5 border-b" />}
+                        {fret === 0 && <span className="w-2.5 border-b" />}
+                        {fret === 0 && <span className="h-7 border-l-4 border-slate-500" />}
+                        {fret === 0 && <span className="w-2.5 border-b" />}
                     </Fragment>
                 ))}
         </div>
